@@ -2,118 +2,237 @@
 {% block title %}Admin Dashboard{% endblock %}
 {% block content %}
 <div class="dashboard-header">
-    <h2>Admin Dashboard</h2>
-    <a href="{{ url_for('admin_users') }}" class="btn btn-outline">Manage Users</a>
-</div>
-
-{% if pending %}
-<div class="section-card">
-    <div class="section-header">
-        <h3>Pending Requests</h3>
-        <span class="badge badge-warning badge-lg">{{ pending|length }}</span>
+    <div>
+        <h2>Admin Dashboard</h2>
+        <p class="dashboard-subtitle">Full system overview & analytics</p>
     </div>
-    <div class="table-container">
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>User</th>
-                    <th>Title</th>
-                    <th>Server</th>
-                    <th>Duration</th>
-                    <th>Submitted</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for req in pending %}
-                <tr>
-                    <td>#{{ req.id }}</td>
-                    <td>{{ req.user.full_name }}</td>
-                    <td>{{ req.title[:35] }}{% if req.title|length > 35 %}...{% endif %}</td>
-                    <td>{{ req.server_name }}</td>
-                    <td>{{ req.access_duration }}</td>
-                    <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    <td class="actions-cell">
-                        <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
-                        <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
-                            <input type="hidden" name="action" value="approve">
-                            <textarea name="notes" placeholder="Approval notes..." rows="2" class="inline-notes"></textarea>
-                            <button type="submit" class="btn btn-sm btn-success">Approve</button>
-                        </form>
-                        <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
-                            <input type="hidden" name="action" value="reject">
-                            <textarea name="notes" placeholder="Rejection reason..." rows="2" class="inline-notes" required></textarea>
-                            <button type="submit" class="btn btn-sm btn-danger">Reject</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <div class="quick-actions">
+        <a href="{{ url_for('admin_users') }}" class="btn btn-outline"><i data-lucide="users"></i> Users</a>
+        <a href="{{ url_for('console_logs') }}" class="btn btn-outline"><i data-lucide="terminal"></i> Logs</a>
     </div>
 </div>
-{% endif %}
 
-<div class="admin-sections">
-    <div class="section-card">
-        <div class="section-header">
-            <h3>Approved <span class="badge badge-success badge-lg">{{ approved|length }}</span></h3>
+<div class="stats-row" id="statsRow">
+    <div class="stat-card"><span class="stat-number" id="statTotal">0</span><span class="stat-label">Total Requests</span></div>
+    <div class="stat-card stat-pending"><span class="stat-number" id="statPending">0</span><span class="stat-label">Pending</span></div>
+    <div class="stat-card stat-approved"><span class="stat-number" id="statApproved">0</span><span class="stat-label">Approved</span></div>
+    <div class="stat-card stat-completed"><span class="stat-number" id="statCompleted">0</span><span class="stat-label">Completed</span></div>
+    <div class="stat-card stat-rejected"><span class="stat-number" id="statRejected">0</span><span class="stat-label">Rejected</span></div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="pie-chart" class="icon-sm"></i> Status Distribution</h3>
         </div>
-        {% if approved %}
-        <div class="compact-list">
-            {% for req in approved %}
-            <div class="compact-item">
-                <span class="compact-id">#{{ req.id }}</span>
-                <span class="compact-user">{{ req.user.full_name }}</span>
-                <span class="compact-title">{{ req.title[:30] }}</span>
-                <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
-            </div>
-            {% endfor %}
+        <div class="dash-card-body chart-body">
+            <canvas id="statusChart"></canvas>
         </div>
-        {% else %}
-        <p class="text-muted">No approved requests.</p>
-        {% endif %}
     </div>
 
-    <div class="section-card">
-        <div class="section-header">
-            <h3>Completed <span class="badge badge-primary badge-lg">{{ completed|length }}</span></h3>
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="trending-up" class="icon-sm"></i> Monthly Trend</h3>
         </div>
-        {% if completed %}
-        <div class="compact-list">
-            {% for req in completed %}
-            <div class="compact-item">
-                <span class="compact-id">#{{ req.id }}</span>
-                <span class="compact-user">{{ req.user.full_name }}</span>
-                <span class="compact-title">{{ req.title[:30] }}</span>
-                <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
-            </div>
-            {% endfor %}
+        <div class="dash-card-body chart-body">
+            <canvas id="monthlyChart"></canvas>
         </div>
-        {% else %}
-        <p class="text-muted">No completed requests.</p>
-        {% endif %}
     </div>
 
-    <div class="section-card">
-        <div class="section-header">
-            <h3>Rejected <span class="badge badge-danger badge-lg">{{ rejected|length }}</span></h3>
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="server" class="icon-sm"></i> Servers Accessed</h3>
         </div>
-        {% if rejected %}
-        <div class="compact-list">
-            {% for req in rejected %}
-            <div class="compact-item">
-                <span class="compact-id">#{{ req.id }}</span>
-                <span class="compact-user">{{ req.user.full_name }}</span>
-                <span class="compact-title">{{ req.title[:30] }}</span>
-                <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
-            </div>
-            {% endfor %}
+        <div class="dash-card-body chart-body">
+            <canvas id="serverChart"></canvas>
         </div>
-        {% else %}
-        <p class="text-muted">No rejected requests.</p>
-        {% endif %}
+    </div>
+
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="check-circle" class="icon-sm"></i> Approval Rate</h3>
+        </div>
+        <div class="dash-card-body chart-body">
+            <canvas id="rateChart"></canvas>
+        </div>
+    </div>
+
+    <div class="dash-card dash-card-wide">
+        <div class="dash-card-header">
+            <h3><i data-lucide="clock" class="icon-sm"></i> Pending Requests</h3>
+            <a href="{{ url_for('history') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        <div class="dash-card-body" id="pendingList">
+            <div class="activity-placeholder">Loading...</div>
+        </div>
+    </div>
+
+    <div class="dash-card dash-card-wide">
+        <div class="dash-card-header">
+            <h3><i data-lucide="activity" class="icon-sm"></i> Recent Activity</h3>
+        </div>
+        <div class="dash-card-body" id="recentList">
+            <div class="activity-placeholder">Loading...</div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = {
+    pending: '#D97706', approved: '#16A34A',
+    completed: '#2563EB', rejected: '#DC2626'
+};
+
+async function loadDashboard() {
+    const res = await fetch('/dashboard/data');
+    const data = await res.json();
+    const s = data.stats;
+
+    animateValue('statTotal', s.total);
+    animateValue('statPending', s.pending);
+    animateValue('statApproved', s.approved);
+    animateValue('statCompleted', s.completed);
+    animateValue('statRejected', s.rejected);
+
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved', 'Completed', 'Rejected'],
+            datasets: [{
+                data: [s.pending, s.approved, s.completed, s.rejected],
+                backgroundColor: [COLORS.pending, COLORS.approved, COLORS.completed, COLORS.rejected],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Quicksand' } } } }
+        }
+    });
+
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'line',
+        data: {
+            labels: data.monthly.labels,
+            datasets: [{
+                label: 'Requests',
+                data: data.monthly.counts,
+                borderColor: '#2563EB',
+                backgroundColor: 'rgba(37,99,235,0.1)',
+                fill: true,
+                tension: 0.4,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    new Chart(document.getElementById('serverChart'), {
+        type: 'bar',
+        data: {
+            labels: data.servers.labels,
+            datasets: [{
+                label: 'Access Count',
+                data: data.servers.counts,
+                backgroundColor: '#F97316',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    const total = s.approved + s.completed + s.rejected;
+    const approved_total = s.approved + s.completed;
+    const approvedVal = total > 0 ? (approved_total / total * 100) : 0;
+    const rejectedVal = total > 0 ? (s.rejected / total * 100) : 0;
+
+    new Chart(document.getElementById('rateChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Approved/Completed', 'Rejected'],
+            datasets: [{
+                data: [approvedVal, rejectedVal],
+                backgroundColor: ['#16A34A', '#DC2626'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { family: 'Quicksand' } } },
+                tooltip: {
+                    callbacks: {
+                        label: function(ctx) {
+                            return ctx.parsed.toFixed(1) + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    renderPendingList(data);
+    renderRecentList(data);
+}
+
+function renderPendingList(data) {
+    const container = document.getElementById('pendingList');
+    const pendingReqs = data.recent.filter(r => r.status === 'pending');
+    if (pendingReqs.length === 0) {
+        container.innerHTML = '<div class="activity-placeholder">No pending requests</div>';
+        return;
+    }
+    container.innerHTML = '<div class="activity-list">' +
+        pendingReqs.map(r => `
+            <a href="/request/${r.id}" class="activity-item">
+                <span class="activity-badge badge badge-warning">pending</span>
+                <span class="activity-text">${r.title}</span>
+                <span class="activity-server">${r.user}</span>
+                <span class="activity-time">${r.created}</span>
+            </a>
+        `).join('') + '</div>';
+}
+
+function renderRecentList(data) {
+    const container = document.getElementById('recentList');
+    if (data.recent.length === 0) {
+        container.innerHTML = '<div class="activity-placeholder">No recent activity</div>';
+        return;
+    }
+    container.innerHTML = '<div class="activity-list">' +
+        data.recent.map(r => `
+            <a href="/request/${r.id}" class="activity-item">
+                <span class="activity-badge badge badge-${r.badge}">${r.status}</span>
+                <span class="activity-text">${r.title}</span>
+                <span class="activity-server">${r.user}</span>
+                <span class="activity-time">${r.created}</span>
+            </a>
+        `).join('') + '</div>';
+}
+
+function animateValue(id, target) {
+    const el = document.getElementById(id);
+    let current = 0;
+    const step = Math.max(1, Math.floor(target / 30));
+    const interval = setInterval(() => {
+        current += step;
+        if (current >= target) { current = target; clearInterval(interval); }
+        el.textContent = current;
+    }, 20);
+}
+
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
 {% endblock %}

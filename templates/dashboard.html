@@ -2,69 +2,170 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="dashboard-header">
-    <h2>Welcome, {{ current_user.full_name }}</h2>
-    <a href="{{ url_for('new_request') }}" class="btn btn-primary">New Access Request</a>
-</div>
-
-<div class="stats-row">
-    <div class="stat-card">
-        <span class="stat-number">{{ requests|length }}</span>
-        <span class="stat-label">Total Requests</span>
+    <div>
+        <h2>Welcome, {{ current_user.full_name }}</h2>
+        <p class="dashboard-subtitle">Server access overview</p>
     </div>
-    <div class="stat-card stat-pending">
-        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'pending')|list|length }}</span>
-        <span class="stat-label">Pending</span>
-    </div>
-    <div class="stat-card stat-approved">
-        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'approved')|list|length }}</span>
-        <span class="stat-label">Approved</span>
-    </div>
-    <div class="stat-card stat-completed">
-        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'completed')|list|length }}</span>
-        <span class="stat-label">Completed</span>
+    <div class="quick-actions">
+        <a href="{{ url_for('new_request') }}" class="btn btn-primary"><i data-lucide="plus-circle"></i> New Request</a>
     </div>
 </div>
 
-{% if requests %}
-<div class="table-container">
-    <table class="styled-table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Server</th>
-                <th>Duration</th>
-                <th>Status</th>
-                <th>Submitted</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for req in requests %}
-            <tr>
-                <td>#{{ req.id }}</td>
-                <td>{{ req.title[:40] }}{% if req.title|length > 40 %}...{% endif %}</td>
-                <td>{{ req.server_name }}</td>
-                <td>{{ req.access_duration }}</td>
-                <td><span class="badge badge-{{ req.status_badge }}">{{ req.status }}</span></td>
-                <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td class="actions-cell">
-                    <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
-                    {% if req.status == 'approved' and req.photos.count() == 0 %}
-                        <a href="{{ url_for('upload_photos', req_id=req.id) }}" class="btn btn-sm btn-primary">Upload Photos</a>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<div class="stats-row" id="statsRow">
+    <div class="stat-card stat-total"><span class="stat-number" id="statTotal">0</span><span class="stat-label">Total Requests</span></div>
+    <div class="stat-card stat-pending"><span class="stat-number" id="statPending">0</span><span class="stat-label">Pending</span></div>
+    <div class="stat-card stat-approved"><span class="stat-number" id="statApproved">0</span><span class="stat-label">Approved</span></div>
+    <div class="stat-card stat-completed"><span class="stat-number" id="statCompleted">0</span><span class="stat-label">Completed</span></div>
+    <div class="stat-card stat-rejected"><span class="stat-number" id="statRejected">0</span><span class="stat-label">Rejected</span></div>
 </div>
-{% else %}
-<div class="empty-state">
-    <div class="empty-icon"><i data-lucide="clipboard-list"></i></div>
-    <h3>No Requests Yet</h3>
-    <p>Submit your first server access request to get started.</p>
-    <a href="{{ url_for('new_request') }}" class="btn btn-primary">Submit Request</a>
+
+<div class="dashboard-grid">
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="pie-chart" class="icon-sm"></i> Request Status</h3>
+        </div>
+        <div class="dash-card-body chart-body">
+            <canvas id="statusChart"></canvas>
+        </div>
+    </div>
+
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="bar-chart-3" class="icon-sm"></i> Monthly Requests</h3>
+        </div>
+        <div class="dash-card-body chart-body">
+            <canvas id="monthlyChart"></canvas>
+        </div>
+    </div>
+
+    <div class="dash-card chart-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="server" class="icon-sm"></i> By Server</h3>
+        </div>
+        <div class="dash-card-body chart-body">
+            <canvas id="serverChart"></canvas>
+        </div>
+    </div>
+
+    <div class="dash-card">
+        <div class="dash-card-header">
+            <h3><i data-lucide="activity" class="icon-sm"></i> Recent Activity</h3>
+        </div>
+        <div class="dash-card-body">
+            <div class="activity-list" id="recentList">
+                <div class="activity-placeholder">Loading...</div>
+            </div>
+        </div>
+    </div>
 </div>
-{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const COLORS = {
+    pending: '#D97706',
+    approved: '#16A34A',
+    completed: '#2563EB',
+    rejected: '#DC2626'
+};
+
+async function loadDashboard() {
+    const res = await fetch('/dashboard/data');
+    const data = await res.json();
+    const s = data.stats;
+
+    animateValue('statTotal', s.total);
+    animateValue('statPending', s.pending);
+    animateValue('statApproved', s.approved);
+    animateValue('statCompleted', s.completed);
+    animateValue('statRejected', s.rejected);
+
+    new Chart(document.getElementById('statusChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved', 'Completed', 'Rejected'],
+            datasets: [{
+                data: [s.pending, s.approved, s.completed, s.rejected],
+                backgroundColor: [COLORS.pending, COLORS.approved, COLORS.completed, COLORS.rejected],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { font: { family: 'Quicksand' } } } }
+        }
+    });
+
+    new Chart(document.getElementById('monthlyChart'), {
+        type: 'bar',
+        data: {
+            labels: data.monthly.labels,
+            datasets: [{
+                label: 'Requests',
+                data: data.monthly.counts,
+                backgroundColor: '#2563EB',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { font: { family: 'Quicksand' } } }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('serverChart'), {
+        type: 'bar',
+        data: {
+            labels: data.servers.labels,
+            datasets: [{
+                label: 'Access Count',
+                data: data.servers.counts,
+                backgroundColor: '#F97316',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+    });
+
+    const list = document.getElementById('recentList');
+    list.innerHTML = '';
+    if (data.recent.length === 0) {
+        list.innerHTML = '<div class="activity-placeholder">No recent activity</div>';
+    } else {
+        data.recent.forEach(r => {
+            const item = document.createElement('a');
+            item.href = '/request/' + r.id;
+            item.className = 'activity-item';
+            item.innerHTML =
+                `<span class="activity-badge badge badge-${r.badge}">${r.status}</span>` +
+                `<span class="activity-text">${r.title}</span>` +
+                `<span class="activity-server">${r.server}</span>` +
+                `<span class="activity-time">${r.created}</span>`;
+            list.appendChild(item);
+        });
+    }
+}
+
+function animateValue(id, target) {
+    const el = document.getElementById(id);
+    let current = 0;
+    const step = Math.max(1, Math.floor(target / 30));
+    const interval = setInterval(() => {
+        current += step;
+        if (current >= target) { current = target; clearInterval(interval); }
+        el.textContent = current;
+    }, 20);
+}
+
+document.addEventListener('DOMContentLoaded', loadDashboard);
+</script>
 {% endblock %}

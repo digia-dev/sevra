@@ -83,6 +83,11 @@
             {% if current_user.is_admin and req.status == 'pending' %}
                 <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">Review in Admin Panel</a>
             {% endif %}
+            {% if current_user.is_admin %}
+                <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?')">
+                    <button type="submit" class="btn btn-danger"><i data-lucide="trash-2" class="icon-sm"></i> Delete Request</button>
+                </form>
+            {% endif %}
         </div>
     </div>
 </div>

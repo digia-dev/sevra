@@ -36,6 +36,11 @@
                 <td>{{ req.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>
                     <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
+                    {% if current_user.is_admin %}
+                    <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?')">
+                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                    </form>
+                    {% endif %}
                 </td>
             </tr>
             {% endfor %}

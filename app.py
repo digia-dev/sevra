@@ -351,6 +351,118 @@ def admin_users():
     return render_template('admin_users.html', users=users)
 
 
+@app.route('/admin/user/<int:user_id>/edit', methods=['POST'])
+@login_required
+def admin_edit_user(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    full_name = request.form.get('full_name', '').strip()
+    is_admin = request.form.get('is_admin') == 'on'
+
+    if not all([username, email, full_name]):
+        flash('All fields are required.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    existing = User.query.filter(User.username == username, User.id != user.id).first()
+    if existing:
+        flash('Username already taken.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    existing = User.query.filter(User.email == email, User.id != user.id).first()
+    if existing:
+        flash('Email already taken.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    user.username = username
+    user.email = email
+    user.full_name = full_name
+    user.is_admin = is_admin
+    if request.form.get('password'):
+        user.set_password(request.form.get('password'))
+
+    db.session.commit()
+    log_action(current_user.id, 'USER_UPDATED', f'Updated user: {user.username}')
+    flash(f'User {user.username} updated.', 'success')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_user(user_id):
+    if not current_user.is_admin:
+        abort(403)
+    if user_id == current_user.id:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('admin_users'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+
+    AccessRequest.query.filter_by(reviewed_by=user_id).update(
+        {AccessRequest.reviewed_by: None})
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+
+    log_action(current_user.id, 'USER_DELETED', f'Deleted user: {username}')
+    flash(f'User {username} and all their data deleted.', 'success')
+    return redirect(url_for('admin_users'))
+
+
+@app.route('/admin/request/<int:req_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_request(req_id):
+    if not current_user.is_admin:
+        abort(403)
+    req = db.session.get(AccessRequest, req_id)
+    if not req:
+        abort(404)
+
+    title = req.title
+    ConsoleLog.query.filter_by(request_id=req.id).update(
+        {ConsoleLog.request_id: None})
+    db.session.delete(req)
+    db.session.commit()
+
+    log_action(current_user.id, 'REQUEST_DELETED', f'Deleted request: {title}')
+    flash(f'Request #{req_id} deleted.', 'success')
+    return redirect(url_for('admin_dashboard'))
+
+
+@app.route('/admin/log/<int:log_id>/delete', methods=['POST'])
+@login_required
+def admin_delete_log(log_id):
+    if not current_user.is_admin:
+        abort(403)
+    log = db.session.get(ConsoleLog, log_id)
+    if not log:
+        abort(404)
+    db.session.delete(log)
+    db.session.commit()
+    flash('Log entry deleted.', 'success')
+    return redirect(url_for('console_logs'))
+
+
+@app.route('/admin/logs/clear', methods=['POST'])
+@login_required
+def admin_clear_logs():
+    if not current_user.is_admin:
+        abort(403)
+    count = ConsoleLog.query.count()
+    ConsoleLog.query.delete()
+    db.session.commit()
+    log_action(current_user.id, 'LOGS_CLEARED', f'Cleared {count} log entries')
+    flash(f'{count} log entries cleared.', 'success')
+    return redirect(url_for('console_logs'))
+
+
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @login_required
 def toggle_user(user_id):
@@ -399,6 +511,82 @@ def console_logs():
 
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
     return render_template('logs.html', logs=logs)
+
+
+@app.route('/dashboard/data')
+@login_required
+def dashboard_data():
+    from sqlalchemy import func, extract
+
+    if current_user.is_admin:
+        base_reqs = AccessRequest.query
+    else:
+        base_reqs = AccessRequest.query.filter_by(user_id=current_user.id)
+
+    total = base_reqs.count()
+    pending = base_reqs.filter_by(status='pending').count()
+    approved = base_reqs.filter_by(status='approved').count()
+    completed = base_reqs.filter_by(status='completed').count()
+    rejected = base_reqs.filter_by(status='rejected').count()
+
+    six_months_ago = datetime.now(timezone.utc).replace(day=1)
+    m = six_months_ago.month - 5
+    y = six_months_ago.year
+    if m < 1:
+        m += 12
+        y -= 1
+    six_months_ago = six_months_ago.replace(year=y, month=m)
+
+    monthly_query = db.session.query(
+        func.strftime('%Y-%m', AccessRequest.created_at).label('month'),
+        func.count(AccessRequest.id).label('count')
+    ).filter(AccessRequest.created_at >= six_months_ago)
+    if not current_user.is_admin:
+        monthly_query = monthly_query.filter(AccessRequest.user_id == current_user.id)
+    monthly = monthly_query.group_by('month').order_by('month').all()
+
+    months_map = {row.month: row.count for row in monthly}
+    months_arr = []
+    counts_arr = []
+    for i in range(6):
+        d = six_months_ago.replace(month=six_months_ago.month + i if six_months_ago.month + i <= 12 else six_months_ago.month + i - 12)
+        label = d.strftime('%Y-%m')
+        months_arr.append(label)
+        counts_arr.append(months_map.get(label, 0))
+
+    servers = db.session.query(
+        AccessRequest.server_name,
+        func.count(AccessRequest.id).label('count')
+    )
+    if not current_user.is_admin:
+        servers = servers.filter(AccessRequest.user_id == current_user.id)
+    servers = servers.group_by(AccessRequest.server_name).order_by(
+        func.count(AccessRequest.id).desc()).limit(8).all()
+
+    server_labels = [s.server_name for s in servers]
+    server_counts = [s.count for s in servers]
+
+    recent = base_reqs.order_by(AccessRequest.created_at.desc()).limit(5).all()
+    recent_data = [{
+        'id': r.id,
+        'title': r.title[:30],
+        'server': r.server_name,
+        'status': r.status,
+        'badge': r.status_badge,
+        'created': r.created_at.strftime('%Y-%m-%d %H:%M'),
+        'user': r.user.full_name if current_user.is_admin else None
+    } for r in recent]
+
+    return {
+        'stats': {
+            'total': total, 'pending': pending,
+            'approved': approved, 'completed': completed,
+            'rejected': rejected
+        },
+        'monthly': {'labels': months_arr, 'counts': counts_arr},
+        'servers': {'labels': server_labels, 'counts': server_counts},
+        'recent': recent_data
+    }
 
 
 @app.route('/static/uploads/<filename>')

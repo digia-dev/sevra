@@ -3,7 +3,14 @@
 {% block content %}
 <div class="page-header">
     <h2>Console Logs</h2>
-    <span class="log-count">{{ logs.total }} entries</span>
+    <div class="page-actions">
+        <span class="log-count">{{ logs.total }} entries</span>
+        {% if current_user.is_admin and logs.total > 0 %}
+        <form method="POST" action="{{ url_for('admin_clear_logs') }}" class="inline-form" onsubmit="return confirm('Clear all {{ logs.total }} log entries?')">
+            <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="eraser" class="icon-sm"></i> Clear All</button>
+        </form>
+        {% endif %}
+    </div>
 </div>
 
 {% if logs.items %}
@@ -14,6 +21,7 @@
         <span class="log-col action">Action</span>
         <span class="log-col details">Details</span>
         <span class="log-col ip">IP Address</span>
+        {% if current_user.is_admin %}<span class="log-col actions-col">Actions</span>{% endif %}
     </div>
     <div class="log-entries">
         {% for log in logs.items %}
@@ -27,6 +35,13 @@
             </span>
             <span class="log-col details">{{ log.details or '-' }}</span>
             <span class="log-col ip">{{ log.ip_address or '-' }}</span>
+            {% if current_user.is_admin %}
+            <span class="log-col actions-col">
+                <form method="POST" action="{{ url_for('admin_delete_log', log_id=log.id) }}" class="inline-form" onsubmit="return confirm('Delete this log entry?')">
+                    <button type="submit" class="btn btn-sm btn-danger" style="padding:2px 6px"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                </form>
+            </span>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

@@ -42,12 +42,16 @@
                     {% endif %}
                 </td>
                 <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
-                <td>
+                <td class="actions-cell">
                     {% if user.id != current_user.id %}
+                    <button class="btn btn-sm btn-outline" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.full_name }}', {{ 'true' if user.is_admin else 'false' }})"><i data-lucide="edit-3" class="icon-sm"></i></button>
                     <form method="POST" action="{{ url_for('toggle_user', user_id=user.id) }}" class="inline-form">
                         <button type="submit" class="btn btn-sm {% if user.is_active %}btn-danger{% else %}btn-success{% endif %}">
-                            {% if user.is_active %}Deactivate{% else %}Activate{% endif %}
+                            {% if user.is_active %}<i data-lucide="pause-circle" class="icon-sm"></i>{% else %}<i data-lucide="play-circle" class="icon-sm"></i>{% endif %}
                         </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin_delete_user', user_id=user.id) }}" class="inline-form" onsubmit="return confirm('Delete user {{ user.username }} and all their data?')">
+                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="icon-sm"></i></button>
                     </form>
                     {% endif %}
                 </td>
@@ -56,4 +60,57 @@
         </tbody>
     </table>
 </div>
+
+<div id="editModal" class="modal" style="display:none">
+    <div class="modal-overlay" onclick="closeEdit()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Edit User</h3>
+            <button class="modal-close" onclick="closeEdit()"><i data-lucide="x"></i></button>
+        </div>
+        <form method="POST" id="editForm" class="styled-form">
+            <div class="form-group">
+                <label for="edit_username">Username</label>
+                <input type="text" id="edit_username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_email">Email</label>
+                <input type="email" id="edit_email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_full_name">Full Name</label>
+                <input type="text" id="edit_full_name" name="full_name" required>
+            </div>
+            <div class="form-group">
+                <label for="edit_password">New Password (leave blank to keep)</label>
+                <input type="password" id="edit_password" name="password" placeholder="Enter new password">
+            </div>
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="edit_is_admin" name="is_admin"> Admin role
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeEdit()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function editUser(id, username, email, fullName, isAdmin) {
+    document.getElementById('editForm').action = '/admin/user/' + id + '/edit';
+    document.getElementById('edit_username').value = username;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_full_name').value = fullName;
+    document.getElementById('edit_password').value = '';
+    document.getElementById('edit_is_admin').checked = isAdmin;
+    document.getElementById('editModal').style.display = 'flex';
+    lucide.createIcons();
+}
+function closeEdit() {
+    document.getElementById('editModal').style.display = 'none';
+}
+</script>
 {% endblock %}

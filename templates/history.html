@@ -5,7 +5,25 @@
     <h2>Request History</h2>
 </div>
 
-{% if requests %}
+<div class="search-bar">
+    <form method="GET" action="{{ url_for('history') }}" class="search-form">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" placeholder="Search title, server..." value="{{ search }}" class="search-input">
+        <select name="status" class="search-select">
+            <option value="">All Status</option>
+            <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+            <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+            <option value="completed" {% if status_filter == 'completed' %}selected{% endif %}>Completed</option>
+            <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+        {% if search or status_filter %}
+        <a href="{{ url_for('history') }}" class="btn btn-sm btn-outline">Clear</a>
+        {% endif %}
+    </form>
+</div>
+
+{% if requests.items %}
 <div class="table-container">
     <table class="styled-table">
         <thead>
@@ -22,7 +40,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for req in requests %}
+            {% for req in requests.items %}
             <tr>
                 <td>#{{ req.id }}</td>
                 {% if current_user.is_admin %}
@@ -37,19 +55,19 @@
                 <td class="actions-cell">
                     <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
                     {% if current_user.is_admin and req.status == 'pending' %}
-                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
+                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Approve request #{{ req.id }}?')">
                         <input type="hidden" name="action" value="approve">
-                        <button type="submit" class="btn btn-sm btn-success"><i data-lucide="check" class="icon-sm"></i></button>
+                        <button type="submit" class="btn btn-sm btn-success" title="Approve"><i data-lucide="check" class="icon-sm"></i></button>
                     </form>
-                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
+                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirmReject(this, {{ req.id }})">
                         <input type="hidden" name="action" value="reject">
                         <textarea name="notes" placeholder="Reason..." rows="1" class="inline-notes" style="width:80px" required></textarea>
-                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="x" class="icon-sm"></i></button>
+                        <button type="submit" class="btn btn-sm btn-danger" title="Reject"><i data-lucide="x" class="icon-sm"></i></button>
                     </form>
                     {% endif %}
                     {% if current_user.is_admin %}
-                    <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?')">
-                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                    <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }} permanently?')">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i data-lucide="trash-2" class="icon-sm"></i></button>
                     </form>
                     {% endif %}
                 </td>
@@ -58,12 +76,41 @@
         </tbody>
     </table>
 </div>
+
+<div class="pagination">
+    {% if requests.has_prev %}
+    <a href="{{ url_for('history', page=requests.prev_num, search=search, status=status_filter) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ requests.page }} of {{ requests.pages }} ({{ requests.total }} total)</span>
+    {% if requests.has_next %}
+    <a href="{{ url_for('history', page=requests.next_num, search=search, status=status_filter) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
+    {% endif %}
+</div>
 {% else %}
 <div class="empty-state">
     <div class="empty-icon"><i data-lucide="book-open"></i></div>
     <h3>No History Found</h3>
+    {% if search or status_filter %}
+    <p>No requests match your search criteria.</p>
+    <a href="{{ url_for('history') }}" class="btn btn-outline">Clear Filters</a>
+    {% else %}
     <p>You haven't submitted any access requests yet.</p>
     <a href="{{ url_for('new_request') }}" class="btn btn-primary">Submit Your First Request</a>
+    {% endif %}
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function confirmReject(form, id) {
+    var notes = form.querySelector('textarea');
+    if (!notes.value.trim()) {
+        alert('Please enter a reason for rejection.');
+        notes.focus();
+        return false;
+    }
+    return confirm('Reject request #' + id + '?');
+}
+</script>
 {% endblock %}

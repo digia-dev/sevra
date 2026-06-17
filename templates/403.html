@@ -1,9 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Forbidden{% endblock %}
 {% block content %}
-<div class="error-page">
-    <h1>403</h1>
-    <p>You don't have permission to access this page.</p>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+<div class="empty-state" style="padding-top:80px">
+    <div class="empty-icon" style="font-size:4rem;color:var(--danger)"><i data-lucide="lock"></i></div>
+    <h3>403 — Access Denied</h3>
+    <p>You do not have permission to view this page.</p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary"><i data-lucide="arrow-left" class="icon-sm"></i> Back to Dashboard</a>
 </div>
 {% endblock %}

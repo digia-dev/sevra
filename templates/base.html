@@ -18,6 +18,26 @@
                 <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo" class="logo-img">
                 <span class="brand-text desktop-only">Serva</span>
             </a>
+            {% if current_user.is_authenticated %}
+            <div class="mobile-notif-wrap" id="mobileNotifWrap">
+                <button class="mobile-notif-trigger" id="mobileNotifTrigger" aria-label="Notifications">
+                    <i data-lucide="bell"></i>
+                    {% if unread_count and unread_count > 0 %}
+                    <span class="badge-notif">{{ unread_count if unread_count < 100 else '99+' }}</span>
+                    {% endif %}
+                    <i data-lucide="chevron-down" class="notif-chevron"></i>
+                </button>
+                <div class="notif-dropdown" id="notifDropdown">
+                    <div class="notif-dropdown-header">
+                        <span>Notifications</span>
+                        <a href="{{ url_for('notifications_page') }}" class="notif-dropdown-link">View All</a>
+                    </div>
+                    <div class="notif-dropdown-body" id="notifDropdownBody">
+                        <div class="notif-dropdown-loading"><i data-lucide="loader-2" class="icon-spin"></i></div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
             <div class="nav-menu-desktop" id="navMenuDesktop">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('dashboard') }}" class="nav-link">Dashboard</a>
@@ -33,6 +53,7 @@
                         {% endif %}
                     </a>
                     <div class="nav-user">
+                        <a href="{{ url_for('profile') }}" class="nav-link profile-link"><i data-lucide="user"></i></a>
                         <span class="user-name">{{ current_user.full_name }}</span>
                         <a href="{{ url_for('logout') }}" class="nav-link logout-link">Logout</a>
                     </div>
@@ -47,11 +68,12 @@
     <main class="main-container">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash-messages">
+                <div class="flash-messages" id="flashMessages">
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
+                        <div class="toast toast-{{ category }}">
+                            <i data-lucide="{% if category == 'success' %}check-circle{% elif category == 'danger' %}alert-circle{% elif category == 'warning' %}alert-triangle{% else %}info{% endif %}" class="toast-icon"></i>
                             <span>{{ message }}</span>
-                            <button class="alert-close" onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
+                            <button class="toast-close" onclick="this.parentElement.remove()"><i data-lucide="x"></i></button>
                         </div>
                     {% endfor %}
                 </div>
@@ -79,16 +101,13 @@
             <i data-lucide="plus"></i>
             <span>Permit</span>
         </a>
-        <a href="{{ url_for('notifications_page') }}" class="bottom-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
-            <i data-lucide="bell"></i>
-            <span>Alerts</span>
-            {% if unread_count and unread_count > 0 %}
-            <span class="badge-notif bottom-notif">{{ unread_count if unread_count < 100 else '99+' }}</span>
-            {% endif %}
-        </a>
         <a href="{{ url_for('console_logs') }}" class="bottom-item {% if request.endpoint == 'console_logs' %}active{% endif %}">
             <i data-lucide="terminal"></i>
             <span>Logs</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="bottom-item bottom-logout">
+            <i data-lucide="log-out"></i>
+            <span>Logout</span>
         </a>
     </nav>
     {% endif %}
@@ -98,11 +117,62 @@
             lucide.createIcons();
 
             setTimeout(function() {
-                document.querySelectorAll('.alert').forEach(function(el) {
+                document.querySelectorAll('.toast').forEach(function(el) {
                     el.style.opacity = '0';
-                    setTimeout(function() { el.remove(); }, 300);
+                    el.style.transform = 'translateX(120%)';
+                    setTimeout(function() { el.remove(); }, 400);
                 });
             }, 5000);
+
+            // Mobile notification dropdown
+            var trigger = document.getElementById('mobileNotifTrigger');
+            var dropdown = document.getElementById('notifDropdown');
+            if (trigger && dropdown) {
+                trigger.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    var isOpen = dropdown.classList.contains('open');
+                    dropdown.classList.toggle('open');
+                    var chevron = trigger.querySelector('.notif-chevron');
+                    if (chevron) {
+                        chevron.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+                    }
+                    if (!isOpen && !dropdown.dataset.loaded) {
+                        fetch('/notifications/data?limit=5')
+                            .then(function(r) { return r.json(); })
+                            .then(function(data) {
+                                var body = document.getElementById('notifDropdownBody');
+                                dropdown.dataset.loaded = '1';
+                                if (data.length === 0) {
+                                    body.innerHTML = '<div class="notif-dropdown-empty">No notifications</div>';
+                                } else {
+                                    body.innerHTML = data.map(function(n) {
+                                        var icon = n.type === 'success' ? 'check-circle' : n.type === 'danger' ? 'x-circle' : 'info';
+                                        return '<div class="notif-dropdown-item ' + (n.is_read ? '' : 'notif-unread') + '">' +
+                                            '<div class="notif-dropdown-icon notif-' + n.type + '"><i data-lucide="' + icon + '"></i></div>' +
+                                            '<div class="notif-dropdown-content">' +
+                                            '<div class="notif-dropdown-title">' + n.title + '</div>' +
+                                            '<div class="notif-dropdown-msg">' + n.message + '</div>' +
+                                            '<div class="notif-dropdown-time">' + n.time + '</div>' +
+                                            '</div>' +
+                                            (n.request_id ? '<a href="/request/' + n.request_id + '" class="notif-dropdown-goto"><i data-lucide="external-link"></i></a>' : '') +
+                                            '</div>';
+                                    }).join('');
+                                    lucide.createIcons();
+                                }
+                            });
+                    }
+                });
+                document.addEventListener('click', function() {
+                    if (dropdown.classList.contains('open')) {
+                        dropdown.classList.remove('open');
+                        var chevron = trigger.querySelector('.notif-chevron');
+                        if (chevron) chevron.style.transform = 'rotate(0deg)';
+                    }
+                });
+                dropdown.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
         });
     </script>
     {% block scripts %}{% endblock %}

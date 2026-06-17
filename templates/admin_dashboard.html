@@ -27,7 +27,8 @@
             <h3><i data-lucide="pie-chart" class="icon-sm"></i> Status Distribution</h3>
         </div>
         <div class="dash-card-body chart-body">
-            <canvas id="statusChart"></canvas>
+            <div class="chart-loader" id="statusLoader"><i data-lucide="loader-2" class="icon-spin"></i></div>
+            <canvas id="statusChart" style="display:none"></canvas>
         </div>
     </div>
 
@@ -36,7 +37,8 @@
             <h3><i data-lucide="trending-up" class="icon-sm"></i> Monthly Trend</h3>
         </div>
         <div class="dash-card-body chart-body">
-            <canvas id="monthlyChart"></canvas>
+            <div class="chart-loader" id="monthlyLoader"><i data-lucide="loader-2" class="icon-spin"></i></div>
+            <canvas id="monthlyChart" style="display:none"></canvas>
         </div>
     </div>
 
@@ -45,7 +47,8 @@
             <h3><i data-lucide="server" class="icon-sm"></i> Servers Accessed</h3>
         </div>
         <div class="dash-card-body chart-body">
-            <canvas id="serverChart"></canvas>
+            <div class="chart-loader" id="serverLoader"><i data-lucide="loader-2" class="icon-spin"></i></div>
+            <canvas id="serverChart" style="display:none"></canvas>
         </div>
     </div>
 
@@ -54,7 +57,8 @@
             <h3><i data-lucide="check-circle" class="icon-sm"></i> Approval Rate</h3>
         </div>
         <div class="dash-card-body chart-body">
-            <canvas id="rateChart"></canvas>
+            <div class="chart-loader" id="rateLoader"><i data-lucide="loader-2" class="icon-spin"></i></div>
+            <canvas id="rateChart" style="display:none"></canvas>
         </div>
     </div>
 
@@ -64,7 +68,7 @@
             <a href="{{ url_for('history') }}" class="btn btn-sm btn-outline">View All</a>
         </div>
         <div class="dash-card-body" id="pendingList">
-            <div class="activity-placeholder">Loading...</div>
+            <div class="activity-placeholder"><i data-lucide="loader-2" class="icon-spin"></i> Loading...</div>
         </div>
     </div>
 
@@ -73,7 +77,7 @@
             <h3><i data-lucide="activity" class="icon-sm"></i> Recent Activity</h3>
         </div>
         <div class="dash-card-body" id="recentList">
-            <div class="activity-placeholder">Loading...</div>
+            <div class="activity-placeholder"><i data-lucide="loader-2" class="icon-spin"></i> Loading...</div>
         </div>
     </div>
 </div>
@@ -96,6 +100,15 @@ async function loadDashboard() {
     animateValue('statApproved', s.approved);
     animateValue('statCompleted', s.completed);
     animateValue('statRejected', s.rejected);
+
+    ['statusLoader','monthlyLoader','serverLoader','rateLoader'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.style.display = 'none'; }
+    });
+    ['statusChart','monthlyChart','serverChart','rateChart'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) { el.style.display = 'block'; }
+    });
 
     new Chart(document.getElementById('statusChart'), {
         type: 'doughnut',
@@ -205,11 +218,11 @@ function renderPendingList(data) {
                     <span class="activity-time">${r.created}</span>
                 </a>
                 <div style="display:flex;gap:4px;padding:4px 0 0 90px;width:100%">
-                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form">
+                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form" onsubmit="return confirmAction(this, 'approve')">
                         <input type="hidden" name="action" value="approve">
                         <button type="submit" class="btn btn-sm btn-success"><i data-lucide="check" class="icon-sm"></i> Approve</button>
                     </form>
-                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form">
+                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form" onsubmit="return confirmAction(this, 'reject')">
                         <input type="hidden" name="action" value="reject">
                         <textarea name="notes" placeholder="Reason..." rows="1" class="inline-notes" style="width:80px" required></textarea>
                         <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="x" class="icon-sm"></i> Reject</button>
@@ -246,6 +259,13 @@ function animateValue(id, target) {
         if (current >= target) { current = target; clearInterval(interval); }
         el.textContent = current;
     }, 20);
+}
+
+function confirmAction(form, action) {
+    var notes = form.querySelector('textarea');
+    var msg = action === 'approve' ? 'Approve this request?' : (notes && notes.value ? 'Reject with reason?' : 'Please enter a reason.');
+    if (action === 'approve') return confirm('Approve this request?');
+    return confirm(msg);
 }
 
 document.addEventListener('DOMContentLoaded', loadDashboard);

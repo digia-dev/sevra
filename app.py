@@ -174,6 +174,49 @@ def login():
     return render_template('login.html')
 
 
+@app.route('/profile', methods=['GET', 'POST'])
+@login_required
+def profile():
+    if request.method == 'POST':
+        full_name = request.form.get('full_name', '').strip()
+        email = request.form.get('email', '').strip()
+        curr_password = request.form.get('current_password', '')
+        new_password = request.form.get('new_password', '')
+        confirm_password = request.form.get('confirm_password', '')
+
+        if not all([full_name, email]):
+            flash('Full name and email are required.', 'danger')
+            return render_template('profile.html')
+
+        if not current_user.check_password(curr_password):
+            flash('Current password is incorrect.', 'danger')
+            return render_template('profile.html')
+
+        existing = User.query.filter(User.email == email, User.id != current_user.id).first()
+        if existing:
+            flash('Email already in use.', 'danger')
+            return render_template('profile.html')
+
+        current_user.full_name = full_name
+        current_user.email = email
+
+        if new_password:
+            if new_password != confirm_password:
+                flash('New passwords do not match.', 'danger')
+                return render_template('profile.html')
+            if len(new_password) < 6:
+                flash('Password must be at least 6 characters.', 'danger')
+                return render_template('profile.html')
+            current_user.set_password(new_password)
+
+        db.session.commit()
+        log_action(current_user.id, 'PROFILE_UPDATED', 'Profile updated')
+        flash('Profile updated successfully.', 'success')
+        return redirect(url_for('profile'))
+
+    return render_template('profile.html')
+
+
 @app.route('/logout')
 @login_required
 def logout():
@@ -520,13 +563,30 @@ def toggle_user(user_id):
 @app.route('/history')
 @login_required
 def history():
-    if current_user.is_admin:
-        requests_all = AccessRequest.query.order_by(
-            AccessRequest.created_at.desc()).all()
-    else:
-        requests_all = current_user.requests.order_by(
-            AccessRequest.created_at.desc()).all()
-    return render_template('history.html', requests=requests_all)
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    search = request.args.get('search', '').strip()
+    status_filter = request.args.get('status', '').strip()
+
+    query = AccessRequest.query
+    if not current_user.is_admin:
+        query = query.filter_by(user_id=current_user.id)
+
+    if search:
+        like = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                AccessRequest.title.ilike(like),
+                AccessRequest.server_name.ilike(like),
+                AccessRequest.description.ilike(like)
+            )
+        )
+    if status_filter:
+        query = query.filter_by(status=status_filter)
+
+    query = query.order_by(AccessRequest.created_at.desc())
+    requests_paged = query.paginate(page=page, per_page=per_page, error_out=False)
+    return render_template('history.html', requests=requests_paged, search=search, status_filter=status_filter)
 
 
 @app.route('/logs')
@@ -534,15 +594,25 @@ def history():
 def console_logs():
     page = request.args.get('page', 1, type=int)
     per_page = 50
+    search = request.args.get('search', '').strip()
 
-    if current_user.is_admin:
-        query = ConsoleLog.query.order_by(ConsoleLog.created_at.desc())
-    else:
-        query = ConsoleLog.query.filter_by(user_id=current_user.id).order_by(
-            ConsoleLog.created_at.desc())
+    query = ConsoleLog.query
+    if not current_user.is_admin:
+        query = query.filter_by(user_id=current_user.id)
 
+    if search:
+        like = f'%{search}%'
+        query = query.filter(
+            db.or_(
+                ConsoleLog.action.ilike(like),
+                ConsoleLog.details.ilike(like),
+                ConsoleLog.ip_address.ilike(like)
+            )
+        )
+
+    query = query.order_by(ConsoleLog.created_at.desc())
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
-    return render_template('logs.html', logs=logs)
+    return render_template('logs.html', logs=logs, search=search)
 
 
 @app.route('/dashboard/data')
@@ -598,7 +668,7 @@ def dashboard_data():
     server_labels = [s.server_name for s in servers]
     server_counts = [s.count for s in servers]
 
-    recent = base_reqs.order_by(AccessRequest.created_at.desc()).limit(5).all()
+    recent = base_reqs.order_by(AccessRequest.created_at.desc()).limit(10).all()
     recent_data = [{
         'id': r.id,
         'title': r.title[:30],
@@ -619,6 +689,23 @@ def dashboard_data():
         'servers': {'labels': server_labels, 'counts': server_counts},
         'recent': recent_data
     }
+
+
+@app.route('/notifications/data')
+@login_required
+def notifications_data():
+    limit = request.args.get('limit', 5, type=int)
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(
+        Notification.created_at.desc()).limit(limit).all()
+    return [{
+        'id': n.id,
+        'title': n.title,
+        'message': n.message[:100],
+        'type': n.type,
+        'is_read': n.is_read,
+        'request_id': n.request_id,
+        'time': n.created_at.strftime('%Y-%m-%d %H:%M')
+    } for n in notifs]
 
 
 @app.route('/notifications')

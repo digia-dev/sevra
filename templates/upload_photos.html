@@ -14,7 +14,7 @@
         <h2 class="form-title">Upload Before & After Photos</h2>
         <p class="form-subtitle">Please provide photographic evidence of the server state before and after your access.</p>
 
-        <form method="POST" enctype="multipart/form-data" class="styled-form">
+        <form method="POST" enctype="multipart/form-data" class="styled-form" id="photoForm">
             <div class="photo-upload-group">
                 <h3 class="upload-label">Before Photo</h3>
                 <div class="form-group">
@@ -23,8 +23,9 @@
                         <span id="before_file_name">Choose before photo...</span>
                         <input type="file" id="before_photo" name="before_photo"
                                accept="image/png,image/jpg,image/jpeg,image/gif" required
-                               onchange="document.getElementById('before_file_name').textContent = this.files[0].name">
+                               onchange="validateFile(this, 'before_file_name')">
                     </label>
+                    <small class="form-hint" id="before_hint"></small>
                 </div>
                 <div class="form-group">
                     <label for="before_description">Before Photo Description</label>
@@ -41,8 +42,9 @@
                         <span id="after_file_name">Choose after photo...</span>
                         <input type="file" id="after_photo" name="after_photo"
                                accept="image/png,image/jpg,image/jpeg,image/gif" required
-                               onchange="document.getElementById('after_file_name').textContent = this.files[0].name">
+                               onchange="validateFile(this, 'after_file_name')">
                     </label>
+                    <small class="form-hint" id="after_hint"></small>
                 </div>
                 <div class="form-group">
                     <label for="after_description">After Photo Description</label>
@@ -53,9 +55,46 @@
 
             <div class="form-actions">
                 <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Skip for Now</a>
-                <button type="submit" class="btn btn-primary">Upload & Complete</button>
+                <button type="submit" class="btn btn-primary" id="uploadBtn">Upload & Complete</button>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+var ALLOWED_TYPES = ['image/png','image/jpeg','image/jpg','image/gif'];
+var MAX_SIZE = 5 * 1024 * 1024; // 5MB
+
+function validateFile(input, labelId) {
+    var label = document.getElementById(labelId);
+    var hint = document.getElementById(labelId.replace('file_name','hint'));
+    var file = input.files[0];
+    if (!file) { label.textContent = 'Choose photo...'; hint.textContent = ''; return; }
+    if (ALLOWED_TYPES.indexOf(file.type) === -1) {
+        hint.textContent = 'Invalid type. Use PNG, JPG, JPEG, or GIF.';
+        hint.style.color = 'var(--danger)';
+        input.value = '';
+        label.textContent = 'Choose photo...';
+        return;
+    }
+    if (file.size > MAX_SIZE) {
+        hint.textContent = 'File too large. Max 5MB.';
+        hint.style.color = 'var(--danger)';
+        input.value = '';
+        label.textContent = 'Choose photo...';
+        return;
+    }
+    hint.textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB — OK';
+    hint.style.color = 'var(--success)';
+    label.textContent = file.name;
+}
+
+document.getElementById('photoForm').addEventListener('submit', function(e) {
+    var btn = document.getElementById('uploadBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="icon-spin"></i> Uploading...';
+    lucide.createIcons();
+});
+</script>
 {% endblock %}

@@ -6,11 +6,22 @@
     <div class="page-actions">
         <span class="log-count">{{ logs.total }} entries</span>
         {% if current_user.is_admin and logs.total > 0 %}
-        <form method="POST" action="{{ url_for('admin_clear_logs') }}" class="inline-form" onsubmit="return confirm('Clear all {{ logs.total }} log entries?')">
+        <form method="POST" action="{{ url_for('admin_clear_logs') }}" class="inline-form" onsubmit="return confirm('Clear all {{ logs.total }} log entries permanently?')">
             <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="eraser" class="icon-sm"></i> Clear All</button>
         </form>
         {% endif %}
     </div>
+</div>
+
+<div class="search-bar">
+    <form method="GET" action="{{ url_for('console_logs') }}" class="search-form">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" name="search" placeholder="Search action, details, IP..." value="{{ search }}" class="search-input">
+        <button type="submit" class="btn btn-sm btn-primary">Search</button>
+        {% if search %}
+        <a href="{{ url_for('console_logs') }}" class="btn btn-sm btn-outline">Clear</a>
+        {% endif %}
+    </form>
 </div>
 
 {% if logs.items %}
@@ -38,7 +49,7 @@
             {% if current_user.is_admin %}
             <span class="log-col actions-col">
                 <form method="POST" action="{{ url_for('admin_delete_log', log_id=log.id) }}" class="inline-form" onsubmit="return confirm('Delete this log entry?')">
-                    <button type="submit" class="btn btn-sm btn-danger" style="padding:2px 6px"><i data-lucide="trash-2" class="icon-sm"></i></button>
+                    <button type="submit" class="btn btn-sm btn-danger" style="padding:2px 6px" title="Delete"><i data-lucide="trash-2" class="icon-sm"></i></button>
                 </form>
             </span>
             {% endif %}
@@ -49,18 +60,23 @@
 
 <div class="pagination">
     {% if logs.has_prev %}
-        <a href="{{ url_for('console_logs', page=logs.prev_num) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
+    <a href="{{ url_for('console_logs', page=logs.prev_num, search=search) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
     {% endif %}
-    <span class="page-info">Page {{ logs.page }} of {{ logs.pages }}</span>
+    <span class="page-info">Page {{ logs.page }} of {{ logs.pages }} ({{ logs.total }} total)</span>
     {% if logs.has_next %}
-        <a href="{{ url_for('console_logs', page=logs.next_num) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
+    <a href="{{ url_for('console_logs', page=logs.next_num, search=search) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
     {% endif %}
 </div>
 {% else %}
 <div class="empty-state">
     <div class="empty-icon"><i data-lucide="file-text"></i></div>
     <h3>No Logs</h3>
+    {% if search %}
+    <p>No log entries match your search.</p>
+    <a href="{{ url_for('console_logs') }}" class="btn btn-outline">Clear Search</a>
+    {% else %}
     <p>No console log entries found.</p>
+    {% endif %}
 </div>
 {% endif %}
 {% endblock %}

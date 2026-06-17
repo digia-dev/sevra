@@ -183,6 +183,10 @@ def register():
             flash('Passwords do not match.', 'danger')
             return render_template('register.html')
 
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return render_template('register.html')
+
         if User.query.filter_by(username=username).first():
             flash('Username already taken.', 'danger')
             return render_template('register.html')
@@ -212,6 +216,10 @@ def login():
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         remember = request.form.get('remember')
+
+        if not username or not password:
+            flash('Username and password are required.', 'danger')
+            return render_template('login.html')
 
         user = User.query.filter_by(username=username).first()
         if not user or not user.check_password(password):

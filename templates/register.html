@@ -23,13 +23,14 @@
             </div>
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" required
-                       placeholder="Create a password">
+                <input type="password" id="password" name="password" required minlength="6"
+                       placeholder="Create a password (min 6 characters)">
             </div>
             <div class="form-group">
                 <label for="confirm_password">Confirm Password</label>
                 <input type="password" id="confirm_password" name="confirm_password" required
                        placeholder="Confirm your password">
+                <small class="form-hint" id="registerPassHint"></small>
             </div>
             <button type="submit" class="btn btn-primary btn-full">Register</button>
         </form>
@@ -38,4 +39,15 @@
         </p>
     </div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('confirm_password').addEventListener('input', function() {
+    var pass = document.getElementById('password').value;
+    var hint = document.getElementById('registerPassHint');
+    if (!this.value) { hint.textContent = ''; return; }
+    hint.textContent = this.value === pass ? 'Passwords match' : 'Passwords do not match';
+    hint.style.color = this.value === pass ? 'var(--success)' : 'var(--danger)';
+});
+</script>
 {% endblock %}

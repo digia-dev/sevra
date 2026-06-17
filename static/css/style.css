@@ -342,6 +342,11 @@ body {
     font-size: 0.8rem;
 }
 
+.btn-lg {
+    padding: 14px 32px;
+    font-size: 1rem;
+}
+
 .btn-full {
     width: 100%;
 }
@@ -1509,7 +1514,8 @@ body {
 }
 
 @media (max-width: 768px) {
-    .desktop-only {
+    .desktop-only,
+    .tablet-only {
         display: none !important;
     }
 
@@ -1579,16 +1585,21 @@ body {
     }
 
     .stats-row {
-        grid-template-columns: repeat(3, 1fr);
-        gap: 10px;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
     }
 
     .stat-card {
-        padding: 14px 10px;
+        padding: 10px 6px;
     }
 
     .stat-number {
-        font-size: 1.5rem;
+        font-size: 1.1rem;
+    }
+
+    .stat-label {
+        font-size: 0.62rem;
+        white-space: nowrap;
     }
 
     .detail-grid {

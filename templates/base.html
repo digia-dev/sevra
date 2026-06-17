@@ -75,6 +75,10 @@
             <i data-lucide="clock"></i>
             <span>History</span>
         </a>
+        <a href="{{ url_for('new_request') }}" class="bottom-item bottom-fab {% if request.endpoint == 'new_request' %}active{% endif %}">
+            <i data-lucide="plus"></i>
+            <span>Permit</span>
+        </a>
         <a href="{{ url_for('notifications_page') }}" class="bottom-item {% if request.endpoint == 'notifications_page' %}active{% endif %}">
             <i data-lucide="bell"></i>
             <span>Alerts</span>
@@ -85,10 +89,6 @@
         <a href="{{ url_for('console_logs') }}" class="bottom-item {% if request.endpoint == 'console_logs' %}active{% endif %}">
             <i data-lucide="terminal"></i>
             <span>Logs</span>
-        </a>
-        <a href="{{ url_for('admin_users') if current_user.is_admin else url_for('logout') }}" class="bottom-item {% if request.endpoint == 'admin_users' %}active{% endif %}">
-            <i data-lucide="{% if current_user.is_admin %}shield{% else %}log-out{% endif %}"></i>
-            <span>{% if current_user.is_admin %}Admin{% else %}Logout{% endif %}</span>
         </a>
     </nav>
     {% endif %}

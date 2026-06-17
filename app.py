@@ -193,12 +193,17 @@ def dashboard():
     return render_template('dashboard.html', requests=requests)
 
 
+@app.route('/user/dashboard')
+@login_required
+def user_dashboard():
+    requests = current_user.requests.order_by(
+        AccessRequest.created_at.desc()).all()
+    return render_template('dashboard.html', requests=requests)
+
+
 @app.route('/request/new', methods=['GET', 'POST'])
 @login_required
 def new_request():
-    if current_user.is_admin:
-        abort(403)
-
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()

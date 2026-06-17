@@ -7,8 +7,9 @@
         <p class="dashboard-subtitle">Full system overview & analytics</p>
     </div>
     <div class="quick-actions">
-        <a href="{{ url_for('admin_users') }}" class="btn btn-outline"><i data-lucide="users"></i> Users</a>
-        <a href="{{ url_for('console_logs') }}" class="btn btn-outline"><i data-lucide="terminal"></i> Logs</a>
+        <a href="{{ url_for('new_request') }}" class="btn btn-primary tablet-only"><i data-lucide="plus-circle"></i> New Permit</a>
+        <a href="{{ url_for('admin_users') }}" class="btn btn-outline desktop-only"><i data-lucide="users"></i> Users</a>
+        <a href="{{ url_for('console_logs') }}" class="btn btn-outline desktop-only"><i data-lucide="terminal"></i> Logs</a>
     </div>
 </div>
 

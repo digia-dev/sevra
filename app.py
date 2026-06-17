@@ -36,9 +36,11 @@ def allowed_file(filename):
 
 
 def save_photo(file):
+    upload_dir = app.config['UPLOAD_FOLDER']
+    os.makedirs(upload_dir, exist_ok=True)
     ext = file.filename.rsplit('.', 1)[1].lower()
     unique_name = f"{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_name)
+    filepath = os.path.join(upload_dir, unique_name)
     file.save(filepath)
 
     if HAS_PIL:
@@ -847,7 +849,7 @@ def mark_all_read():
     return redirect(request.referrer or url_for('notifications_page'))
 
 
-@app.route('/static/uploads/<filename>')
+@app.route('/uploads/<filename>')
 @login_required
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)

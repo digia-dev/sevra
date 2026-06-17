@@ -12,6 +12,13 @@ class Config:
         _uri = _uri.replace('postgres://', 'postgresql://', 1)
     SQLALCHEMY_DATABASE_URI = _uri
 
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 300,
+        'pool_size': 5,
+        'max_overflow': 0,
+    }
+
     UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                  os.getenv('UPLOAD_FOLDER', 'static/uploads'))
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024

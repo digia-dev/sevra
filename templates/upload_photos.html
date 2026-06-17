@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Upload Photos{% endblock %}
+{% block content %}
+<div class="form-page">
+    <div class="form-card form-card-wide">
+        <div class="approved-banner">
+            <span class="approved-icon"><i data-lucide="check-circle"></i></span>
+            <div>
+                <h3>Request Approved</h3>
+                <p>{{ req.title }} &mdash; {{ req.server_name }}</p>
+            </div>
+        </div>
+
+        <h2 class="form-title">Upload Before & After Photos</h2>
+        <p class="form-subtitle">Please provide photographic evidence of the server state before and after your access.</p>
+
+        <form method="POST" enctype="multipart/form-data" class="styled-form">
+            <div class="photo-upload-group">
+                <h3 class="upload-label">Before Photo</h3>
+                <div class="form-group">
+                    <label for="before_photo" class="file-label">
+                        <span class="file-icon"><i data-lucide="camera"></i></span>
+                        <span id="before_file_name">Choose before photo...</span>
+                        <input type="file" id="before_photo" name="before_photo"
+                               accept="image/png,image/jpg,image/jpeg,image/gif" required
+                               onchange="document.getElementById('before_file_name').textContent = this.files[0].name">
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="before_description">Before Photo Description</label>
+                    <textarea id="before_description" name="before_description" rows="3"
+                              placeholder="Describe the server state before access..."></textarea>
+                </div>
+            </div>
+
+            <div class="photo-upload-group">
+                <h3 class="upload-label">After Photo</h3>
+                <div class="form-group">
+                    <label for="after_photo" class="file-label">
+                        <span class="file-icon"><i data-lucide="camera"></i></span>
+                        <span id="after_file_name">Choose after photo...</span>
+                        <input type="file" id="after_photo" name="after_photo"
+                               accept="image/png,image/jpg,image/jpeg,image/gif" required
+                               onchange="document.getElementById('after_file_name').textContent = this.files[0].name">
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label for="after_description">After Photo Description</label>
+                    <textarea id="after_description" name="after_description" rows="3"
+                              placeholder="Describe the server state after access..."></textarea>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Skip for Now</a>
+                <button type="submit" class="btn btn-primary">Upload & Complete</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

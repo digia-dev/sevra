@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Request History{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Request History</h2>
+</div>
+
+{% if requests %}
+<div class="table-container">
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                {% if current_user.is_admin %}<th>User</th>{% endif %}
+                <th>Title</th>
+                <th>Server</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Updated</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>#{{ req.id }}</td>
+                {% if current_user.is_admin %}
+                <td>{{ req.user.full_name }}</td>
+                {% endif %}
+                <td>{{ req.title[:40] }}{% if req.title|length > 40 %}...{% endif %}</td>
+                <td>{{ req.server_name }}</td>
+                <td>{{ req.access_duration }}</td>
+                <td><span class="badge badge-{{ req.status_badge }}">{{ req.status }}</span></td>
+                <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ req.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>
+                    <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon"><i data-lucide="book-open"></i></div>
+    <h3>No History Found</h3>
+    <p>You haven't submitted any access requests yet.</p>
+    <a href="{{ url_for('new_request') }}" class="btn btn-primary">Submit Your First Request</a>
+</div>
+{% endif %}
+{% endblock %}

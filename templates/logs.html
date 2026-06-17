@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Console Logs{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Console Logs</h2>
+    <span class="log-count">{{ logs.total }} entries</span>
+</div>
+
+{% if logs.items %}
+<div class="log-container">
+    <div class="log-header">
+        <span class="log-col time">Timestamp</span>
+        <span class="log-col user">User</span>
+        <span class="log-col action">Action</span>
+        <span class="log-col details">Details</span>
+        <span class="log-col ip">IP Address</span>
+    </div>
+    <div class="log-entries">
+        {% for log in logs.items %}
+        <div class="log-entry">
+            <span class="log-col time">{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+            <span class="log-col user">{{ log.user.username }}</span>
+            <span class="log-col action">
+                <span class="log-action-badge log-{{ log.action.split('_')[0]|lower if '_' in log.action else log.action|lower }}">
+                    {{ log.action }}
+                </span>
+            </span>
+            <span class="log-col details">{{ log.details or '-' }}</span>
+            <span class="log-col ip">{{ log.ip_address or '-' }}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="pagination">
+    {% if logs.has_prev %}
+        <a href="{{ url_for('console_logs', page=logs.prev_num) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ logs.page }} of {{ logs.pages }}</span>
+    {% if logs.has_next %}
+        <a href="{{ url_for('console_logs', page=logs.next_num) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
+    {% endif %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon"><i data-lucide="file-text"></i></div>
+    <h3>No Logs</h3>
+    <p>No console log entries found.</p>
+</div>
+{% endif %}
+{% endblock %}

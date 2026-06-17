@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Home - Server Access Permits{% endblock %}
+{% block content %}
+<div class="hero">
+    <div class="hero-content">
+        <h1 class="hero-title">Server Access Permits</h1>
+        <p class="hero-subtitle">Secure, trackable access management for your server infrastructure</p>
+        <div class="hero-actions">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Go to Dashboard</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-secondary">Register</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="hero-features">
+        <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="lock"></i></div>
+            <h3>Request Access</h3>
+            <p>Submit server access requests with detailed descriptions</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="file-text"></i></div>
+            <h3>Approval Workflow</h3>
+            <p>Administrators review and approve or reject requests</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="camera"></i></div>
+            <h3>Photo Evidence</h3>
+            <p>Upload before and after photos upon approval</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon"><i data-lucide="trending-up"></i></div>
+            <h3>Full Audit Trail</h3>
+            <p>Complete history and console log tracking</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

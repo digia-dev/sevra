@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}New Access Request{% endblock %}
+{% block content %}
+<div class="form-page">
+    <div class="form-card form-card-wide">
+        <h2 class="form-title">New Access Request</h2>
+        <form method="POST" class="styled-form">
+            <div class="form-group">
+                <label for="title">Request Title</label>
+                <input type="text" id="title" name="title" required
+                       placeholder="e.g., Database Server Maintenance Access" autofocus>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="server_name">Server Name</label>
+                    <input type="text" id="server_name" name="server_name" required
+                           placeholder="e.g., prod-db-01">
+                </div>
+                <div class="form-group">
+                    <label for="access_duration">Access Duration</label>
+                    <input type="text" id="access_duration" name="access_duration" required
+                           placeholder="e.g., 2 hours, 1 day">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="description">Description & Rationale</label>
+                <textarea id="description" name="description" rows="6" required
+                          placeholder="Describe why you need access, what tasks you will perform, and any relevant details..."></textarea>
+            </div>
+            <div class="form-actions">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline">Cancel</a>
+                <button type="submit" class="btn btn-primary">Submit Request</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

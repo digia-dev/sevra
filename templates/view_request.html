@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ req.id }}{% endblock %}
+{% block content %}
+<div class="detail-page">
+    <a href="{{ url_for('dashboard') }}" class="back-link"><i data-lucide="arrow-left" class="icon-sm"></i> Back to Dashboard</a>
+
+    <div class="detail-card">
+        <div class="detail-header">
+            <h2>{{ req.title }}</h2>
+            <span class="badge badge-{{ req.status_badge }} badge-lg">{{ req.status|upper }}</span>
+        </div>
+
+        <div class="detail-body">
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Request ID</span>
+                    <span class="detail-value">#{{ req.id }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Server</span>
+                    <span class="detail-value">{{ req.server_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Duration</span>
+                    <span class="detail-value">{{ req.access_duration }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Submitted By</span>
+                    <span class="detail-value">{{ req.user.full_name }} (@{{ req.user.username }})</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Submitted At</span>
+                    <span class="detail-value">{{ req.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Last Updated</span>
+                    <span class="detail-value">{{ req.updated_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                </div>
+                {% if req.reviewed_by %}
+                <div class="detail-item">
+                    <span class="detail-label">Reviewed By</span>
+                    <span class="detail-value">{{ req.reviewer.full_name if req.reviewer else 'Admin' }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="detail-section">
+                <h3>Description</h3>
+                <div class="detail-description">{{ req.description|replace('\n', '<br>')|safe }}</div>
+            </div>
+
+            {% if req.review_notes %}
+            <div class="detail-section">
+                <h3>Review Notes</h3>
+                <div class="detail-description notes">{{ req.review_notes|replace('\n', '<br>')|safe }}</div>
+            </div>
+            {% endif %}
+
+            {% if req.photos.count() > 0 %}
+            <div class="detail-section">
+                <h3>Photos</h3>
+                <div class="photo-grid">
+                    {% for photo in req.photos %}
+                    <div class="photo-card">
+                        <div class="photo-badge">{{ photo.photo_type|upper }}</div>
+                        <img src="{{ url_for('uploaded_file', filename=photo.filename) }}"
+                             alt="{{ photo.photo_type }} photo">
+                        {% if photo.description %}
+                        <p class="photo-desc">{{ photo.description }}</p>
+                        {% endif %}
+                        <span class="photo-time">{{ photo.uploaded_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="detail-footer">
+            {% if req.status == 'approved' and req.photos.count() == 0 and req.user_id == current_user.id %}
+                <a href="{{ url_for('upload_photos', req_id=req.id) }}" class="btn btn-primary">Upload Photos</a>
+            {% endif %}
+            {% if current_user.is_admin and req.status == 'pending' %}
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">Review in Admin Panel</a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

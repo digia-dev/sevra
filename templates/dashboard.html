@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="dashboard-header">
+    <h2>Welcome, {{ current_user.full_name }}</h2>
+    <a href="{{ url_for('new_request') }}" class="btn btn-primary">New Access Request</a>
+</div>
+
+<div class="stats-row">
+    <div class="stat-card">
+        <span class="stat-number">{{ requests|length }}</span>
+        <span class="stat-label">Total Requests</span>
+    </div>
+    <div class="stat-card stat-pending">
+        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'pending')|list|length }}</span>
+        <span class="stat-label">Pending</span>
+    </div>
+    <div class="stat-card stat-approved">
+        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'approved')|list|length }}</span>
+        <span class="stat-label">Approved</span>
+    </div>
+    <div class="stat-card stat-completed">
+        <span class="stat-number">{{ requests|selectattr('status', 'equalto', 'completed')|list|length }}</span>
+        <span class="stat-label">Completed</span>
+    </div>
+</div>
+
+{% if requests %}
+<div class="table-container">
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Server</th>
+                <th>Duration</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in requests %}
+            <tr>
+                <td>#{{ req.id }}</td>
+                <td>{{ req.title[:40] }}{% if req.title|length > 40 %}...{% endif %}</td>
+                <td>{{ req.server_name }}</td>
+                <td>{{ req.access_duration }}</td>
+                <td><span class="badge badge-{{ req.status_badge }}">{{ req.status }}</span></td>
+                <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td class="actions-cell">
+                    <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
+                    {% if req.status == 'approved' and req.photos.count() == 0 %}
+                        <a href="{{ url_for('upload_photos', req_id=req.id) }}" class="btn btn-sm btn-primary">Upload Photos</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon"><i data-lucide="clipboard-list"></i></div>
+    <h3>No Requests Yet</h3>
+    <p>Submit your first server access request to get started.</p>
+    <a href="{{ url_for('new_request') }}" class="btn btn-primary">Submit Request</a>
+</div>
+{% endif %}
+{% endblock %}

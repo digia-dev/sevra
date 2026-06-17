@@ -3,6 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563EB">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Serva">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/icon-192x192.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/icon-192x192.png') }}">
     <title>{% block title %}Server Access Permits{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,21 +25,26 @@
                 <span class="brand-text desktop-only">Serva</span>
             </a>
             {% if current_user.is_authenticated %}
-            <div class="mobile-notif-wrap" id="mobileNotifWrap">
-                <button class="mobile-notif-trigger" id="mobileNotifTrigger" aria-label="Notifications">
-                    <i data-lucide="bell"></i>
-                    {% if unread_count and unread_count > 0 %}
-                    <span class="badge-notif">{{ unread_count if unread_count < 100 else '99+' }}</span>
-                    {% endif %}
-                    <i data-lucide="chevron-down" class="notif-chevron"></i>
-                </button>
-                <div class="notif-dropdown" id="notifDropdown">
-                    <div class="notif-dropdown-header">
-                        <span>Notifications</span>
-                        <a href="{{ url_for('notifications_page') }}" class="notif-dropdown-link">View All</a>
-                    </div>
-                    <div class="notif-dropdown-body" id="notifDropdownBody">
-                        <div class="notif-dropdown-loading"><i data-lucide="loader-2" class="icon-spin"></i></div>
+            <div class="mobile-actions-wrap" id="mobileActionsWrap">
+                <a href="{{ url_for('profile') }}" class="mobile-action-btn" aria-label="Settings">
+                    <i data-lucide="settings"></i>
+                </a>
+                <div class="mobile-notif-wrap">
+                    <button class="mobile-notif-trigger" id="mobileNotifTrigger" aria-label="Notifications">
+                        <i data-lucide="bell"></i>
+                        {% if unread_count and unread_count > 0 %}
+                        <span class="badge-notif">{{ unread_count if unread_count < 100 else '99+' }}</span>
+                        {% endif %}
+                        <i data-lucide="chevron-down" class="notif-chevron"></i>
+                    </button>
+                    <div class="notif-dropdown" id="notifDropdown">
+                        <div class="notif-dropdown-header">
+                            <span>Notifications</span>
+                            <a href="{{ url_for('notifications_page') }}" class="notif-dropdown-link">View All</a>
+                        </div>
+                        <div class="notif-dropdown-body" id="notifDropdownBody">
+                            <div class="notif-dropdown-loading"><i data-lucide="loader-2" class="icon-spin"></i></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -172,6 +183,10 @@
                 dropdown.addEventListener('click', function(e) {
                     e.stopPropagation();
                 });
+            }
+
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/static/sw.js');
             }
         });
     </script>

@@ -1868,11 +1868,31 @@ body {
 }
 
 /* ── Mobile Notification Bell & Dropdown ── */
+.mobile-actions-wrap {
+    display: none;
+    align-items: center;
+    margin-left: auto;
+    margin-right: 4px;
+    gap: 2px;
+}
+
+.mobile-action-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    padding: 6px 8px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+}
+
+.mobile-action-btn:hover {
+    background: var(--gray-100);
+}
+
 .mobile-notif-wrap {
     display: none;
     position: relative;
-    margin-left: auto;
-    margin-right: 4px;
 }
 
 .mobile-notif-trigger {
@@ -2033,6 +2053,10 @@ body {
 }
 
 @media (max-width: 768px) {
+    .mobile-actions-wrap {
+        display: flex;
+    }
+
     .mobile-notif-wrap {
         display: flex;
         align-items: center;

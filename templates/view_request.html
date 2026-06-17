@@ -46,13 +46,13 @@
 
             <div class="detail-section">
                 <h3>Description</h3>
-                <div class="detail-description">{{ req.description|replace('\n', '<br>')|safe }}</div>
+                <div class="detail-description">{{ req.description|e|replace('\n', '<br>') }}</div>
             </div>
 
             {% if req.review_notes %}
             <div class="detail-section">
                 <h3>Review Notes</h3>
-                <div class="detail-description notes">{{ req.review_notes|replace('\n', '<br>')|safe }}</div>
+                <div class="detail-description notes">{{ req.review_notes|e|replace('\n', '<br>') }}</div>
             </div>
             {% endif %}
 
@@ -82,11 +82,13 @@
             {% endif %}
             {% if current_user.is_admin and req.status == 'pending' %}
                 <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Approve this request?')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="approve">
                     <textarea name="notes" placeholder="Approval notes..." rows="2" class="inline-notes" style="width:160px"></textarea>
                     <button type="submit" class="btn btn-success"><i data-lucide="check-circle" class="icon-sm"></i> Approve</button>
                 </form>
                 <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirmReject(this)">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="reject">
                     <textarea name="notes" placeholder="Rejection reason..." rows="2" class="inline-notes" style="width:160px" required></textarea>
                     <button type="submit" class="btn btn-danger"><i data-lucide="x-circle" class="icon-sm"></i> Reject</button>
@@ -94,6 +96,7 @@
             {% endif %}
             {% if current_user.is_admin %}
                 <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }} permanently?')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger"><i data-lucide="trash-2" class="icon-sm"></i> Delete</button>
                 </form>
             {% endif %}

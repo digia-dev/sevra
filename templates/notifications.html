@@ -5,6 +5,7 @@
     <h2>Notifications</h2>
     {% if notifs.items %}
     <form method="POST" action="{{ url_for('mark_all_read') }}" class="inline-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
         <button type="submit" class="btn btn-sm btn-outline"><i data-lucide="check-check" class="icon-sm"></i> Mark All Read</button>
     </form>
     {% endif %}
@@ -25,6 +26,7 @@
         <div class="notif-actions">
             {% if not n.is_read %}
             <form method="POST" action="{{ url_for('mark_notification_read', notif_id=n.id) }}" class="inline-form mark-read-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-sm btn-outline"><i data-lucide="check" class="icon-sm"></i></button>
             </form>
             {% endif %}
@@ -61,7 +63,8 @@ document.querySelectorAll('.mark-read-form').forEach(function(form) {
         e.preventDefault();
         var btn = this.querySelector('button');
         var item = this.closest('.notif-item');
-        fetch(this.action, { method: 'POST' });
+        var fd = new FormData(this);
+        fetch(this.action, { method: 'POST', body: fd });
         item.classList.remove('notif-unread');
         btn.innerHTML = '<i data-lucide="check" class="icon-sm"></i>';
         btn.disabled = true;

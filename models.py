@@ -62,7 +62,7 @@ class AccessRequest(db.Model):
 
     @property
     def status_badge(self):
-        badges = {'pending': 'warning', 'approved': 'success', 'rejected': 'danger'}
+        badges = {'pending': 'warning', 'approved': 'success', 'completed': 'success', 'rejected': 'danger'}
         return badges.get(self.status, 'secondary')
 
     def __repr__(self):

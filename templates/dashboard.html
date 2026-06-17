@@ -151,15 +151,16 @@ async function loadDashboard() {
     if (data.recent.length === 0) {
         list.innerHTML = '<div class="activity-placeholder">No recent activity</div>';
     } else {
+        function esc(s) { return document.createElement('div').appendChild(document.createTextNode(String(s))).parentNode.innerHTML; }
         data.recent.forEach(r => {
             const item = document.createElement('a');
             item.href = '/request/' + r.id;
             item.className = 'activity-item';
             item.innerHTML =
-                `<span class="activity-badge badge badge-${r.badge}">${r.status}</span>` +
-                `<span class="activity-text">${r.title}</span>` +
-                `<span class="activity-server">${r.server}</span>` +
-                `<span class="activity-time">${r.created}</span>`;
+                `<span class="activity-badge badge badge-${esc(r.badge)}">${esc(r.status)}</span>` +
+                `<span class="activity-text">${esc(r.title)}</span>` +
+                `<span class="activity-server">${esc(r.server)}</span>` +
+                `<span class="activity-time">${esc(r.created)}</span>`;
             list.appendChild(item);
         });
     }

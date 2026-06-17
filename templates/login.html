@@ -5,6 +5,7 @@
     <div class="form-card">
         <h2 class="form-title">Login</h2>
         <form method="POST" class="styled-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">Username</label>
                 <input type="text" id="username" name="username" required

@@ -7,6 +7,7 @@
         <span class="log-count">{{ logs.total }} entries</span>
         {% if current_user.is_admin and logs.total > 0 %}
         <form method="POST" action="{{ url_for('admin_clear_logs') }}" class="inline-form" onsubmit="return confirm('Clear all {{ logs.total }} log entries permanently?')">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="eraser" class="icon-sm"></i> Clear All</button>
         </form>
         {% endif %}
@@ -49,6 +50,7 @@
             {% if current_user.is_admin %}
             <span class="log-col actions-col">
                 <form method="POST" action="{{ url_for('admin_delete_log', log_id=log.id) }}" class="inline-form" onsubmit="return confirm('Delete this log entry?')">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-sm btn-danger" style="padding:2px 6px" title="Delete"><i data-lucide="trash-2" class="icon-sm"></i></button>
                 </form>
             </span>

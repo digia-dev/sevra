@@ -5,6 +5,7 @@
     <div class="form-card form-card-wide">
         <h2 class="form-title">New Access Request</h2>
         <form method="POST" class="styled-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="title">Request Title</label>
                 <input type="text" id="title" name="title" required

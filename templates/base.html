@@ -156,17 +156,18 @@
                                 if (data.length === 0) {
                                     body.innerHTML = '<div class="notif-dropdown-empty">No notifications</div>';
                                 } else {
+                                    function esc(s) { return document.createElement('div').appendChild(document.createTextNode(s)).parentNode.innerHTML; }
                                     body.innerHTML = data.map(function(n) {
                                         var icon = n.type === 'success' ? 'check-circle' : n.type === 'danger' ? 'x-circle' : 'info';
-                                        return '<div class="notif-dropdown-item ' + (n.is_read ? '' : 'notif-unread') + '">' +
-                                            '<div class="notif-dropdown-icon notif-' + n.type + '"><i data-lucide="' + icon + '"></i></div>' +
+                                        var cls = n.is_read ? '' : 'notif-unread';
+                                        var link = n.request_id ? '<a href="/request/' + n.request_id + '" class="notif-dropdown-goto"><i data-lucide="external-link"></i></a>' : '';
+                                        return '<div class="notif-dropdown-item ' + cls + '">' +
+                                            '<div class="notif-dropdown-icon notif-' + esc(n.type) + '"><i data-lucide="' + icon + '"></i></div>' +
                                             '<div class="notif-dropdown-content">' +
-                                            '<div class="notif-dropdown-title">' + n.title + '</div>' +
-                                            '<div class="notif-dropdown-msg">' + n.message + '</div>' +
-                                            '<div class="notif-dropdown-time">' + n.time + '</div>' +
-                                            '</div>' +
-                                            (n.request_id ? '<a href="/request/' + n.request_id + '" class="notif-dropdown-goto"><i data-lucide="external-link"></i></a>' : '') +
-                                            '</div>';
+                                            '<div class="notif-dropdown-title">' + esc(n.title) + '</div>' +
+                                            '<div class="notif-dropdown-msg">' + esc(n.message) + '</div>' +
+                                            '<div class="notif-dropdown-time">' + esc(n.time) + '</div>' +
+                                            '</div>' + link + '</div>';
                                     }).join('');
                                     lucide.createIcons();
                                 }

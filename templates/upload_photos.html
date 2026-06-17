@@ -15,6 +15,7 @@
         <p class="form-subtitle">Please provide photographic evidence of the server state before and after your access.</p>
 
         <form method="POST" enctype="multipart/form-data" class="styled-form" id="photoForm">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
             <div class="photo-upload-group">
                 <h3 class="upload-label">Before Photo</h3>
                 <div class="form-group">

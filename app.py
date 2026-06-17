@@ -1,9 +1,11 @@
 import os
 import uuid
+import hashlib
+import hmac
 from datetime import datetime, timezone
 
 from flask import (Flask, render_template, redirect, url_for, flash,
-                   request, abort, send_from_directory)
+                   request, abort, send_from_directory, session, jsonify)
 from flask_login import (LoginManager, login_user, logout_user,
                          login_required, current_user)
 from werkzeug.utils import secure_filename
@@ -57,7 +59,6 @@ def log_action(user_id, action, details=None, request_id=None, ip=None):
         ip_address=ip or request.remote_addr
     )
     db.session.add(log)
-    db.session.commit()
 
 
 def notify(user_id, title, message, type='info', request_id=None):
@@ -66,7 +67,32 @@ def notify(user_id, title, message, type='info', request_id=None):
         type=type, request_id=request_id
     )
     db.session.add(notif)
-    db.session.commit()
+
+
+def csrf_token():
+    if '_csrf_token' not in session:
+        session['_csrf_token'] = hashlib.sha256(os.urandom(32)).hexdigest()
+    return session['_csrf_token']
+
+
+def validate_csrf():
+    token = request.form.get('_csrf_token')
+    if not token or token != session.get('_csrf_token'):
+        abort(403)
+
+
+def superadmin_required():
+    if not current_user.is_admin:
+        abort(403)
+    if current_user.id != 1 and getattr(current_user, 'is_superadmin', False):
+        return
+    if current_user.id == 1:
+        return
+
+
+def superadmin_only():
+    if current_user.id != 1:
+        abort(403)
 
 
 @app.context_processor
@@ -78,12 +104,16 @@ def inject_now():
                 user_id=current_user.id, is_read=False).count()
         except Exception:
             ctx['unread_count'] = 0
+    ctx['csrf_token'] = csrf_token
     return ctx
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    return db.session.get(User, int(user_id))
+    try:
+        return db.session.get(User, int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 
 @app.cli.command('init-db')
@@ -112,16 +142,16 @@ def init_db_once():
 
 
 def seed_default_users():
-    if User.query.filter_by(username='superadmin').first():
-        return
+    existing = {u.username for u in User.query.all()}
     for u in [
         ('superadmin', 'superadmin@system.local', 'Super Administrator', True, 'SuperAdmin123!'),
         ('admin', 'admin@system.local', 'System Administrator', True, 'Admin123!'),
         ('user', 'user@system.local', 'Regular User', False, 'User123!'),
     ]:
-        user = User(username=u[0], email=u[1], full_name=u[2], is_admin=u[3])
-        user.set_password(u[4])
-        db.session.add(user)
+        if u[0] not in existing:
+            user = User(username=u[0], email=u[1], full_name=u[2], is_admin=u[3])
+            user.set_password(u[4])
+            db.session.add(user)
     db.session.commit()
 
 
@@ -136,6 +166,7 @@ def register():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
+        validate_csrf()
         username = request.form.get('username', '').strip()
         email = request.form.get('email', '').strip()
         full_name = request.form.get('full_name', '').strip()
@@ -161,9 +192,8 @@ def register():
         user = User(username=username, email=email, full_name=full_name)
         user.set_password(password)
         db.session.add(user)
-        db.session.commit()
-
         log_action(user.id, 'REGISTER', 'User registered successfully')
+        db.session.commit()
         flash('Registration successful. Please log in.', 'success')
         return redirect(url_for('login'))
 
@@ -176,6 +206,7 @@ def login():
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
+        validate_csrf()
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
         remember = request.form.get('remember')
@@ -191,6 +222,7 @@ def login():
 
         login_user(user, remember=bool(remember))
         log_action(user.id, 'LOGIN', 'User logged in')
+        db.session.commit()
 
         next_page = request.args.get('next')
         if user.is_admin:
@@ -204,6 +236,7 @@ def login():
 @login_required
 def profile():
     if request.method == 'POST':
+        validate_csrf()
         full_name = request.form.get('full_name', '').strip()
         email = request.form.get('email', '').strip()
         curr_password = request.form.get('current_password', '')
@@ -214,19 +247,15 @@ def profile():
             flash('Full name and email are required.', 'danger')
             return render_template('profile.html')
 
-        if not current_user.check_password(curr_password):
-            flash('Current password is incorrect.', 'danger')
-            return render_template('profile.html')
-
         existing = User.query.filter(User.email == email, User.id != current_user.id).first()
         if existing:
             flash('Email already in use.', 'danger')
             return render_template('profile.html')
 
-        current_user.full_name = full_name
-        current_user.email = email
-
-        if new_password:
+        if new_password or curr_password:
+            if not current_user.check_password(curr_password):
+                flash('Current password is incorrect.', 'danger')
+                return render_template('profile.html')
             if new_password != confirm_password:
                 flash('New passwords do not match.', 'danger')
                 return render_template('profile.html')
@@ -235,8 +264,10 @@ def profile():
                 return render_template('profile.html')
             current_user.set_password(new_password)
 
-        db.session.commit()
+        current_user.full_name = full_name
+        current_user.email = email
         log_action(current_user.id, 'PROFILE_UPDATED', 'Profile updated')
+        db.session.commit()
         flash('Profile updated successfully.', 'success')
         return redirect(url_for('profile'))
 
@@ -274,6 +305,7 @@ def user_dashboard():
 @login_required
 def new_request():
     if request.method == 'POST':
+        validate_csrf()
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
         server_name = request.form.get('server_name', '').strip()
@@ -291,8 +323,6 @@ def new_request():
             access_duration=access_duration
         )
         db.session.add(req)
-        db.session.commit()
-
         log_action(current_user.id, 'SUBMIT_REQUEST',
                    f'Submitted request: {title}',
                    request_id=req.id)
@@ -300,6 +330,7 @@ def new_request():
             notify(admin.id, 'New Access Request',
                    f'{current_user.full_name} submitted a new request: "{title}"',
                    'info', request_id=req.id)
+        db.session.commit()
         flash('Access request submitted successfully.', 'success')
         return redirect(url_for('dashboard'))
 
@@ -330,6 +361,7 @@ def upload_photos(req_id):
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
+        validate_csrf()
         before_file = request.files.get('before_photo')
         after_file = request.files.get('after_photo')
         before_desc = request.form.get('before_description', '').strip()
@@ -357,8 +389,6 @@ def upload_photos(req_id):
         )
         db.session.add_all([photo_before, photo_after])
         req.status = 'completed'
-        db.session.commit()
-
         log_action(current_user.id, 'UPLOAD_PHOTOS',
                    f'Uploaded photos for request: {req.title}',
                    request_id=req.id)
@@ -366,6 +396,7 @@ def upload_photos(req_id):
             notify(admin.id, 'Photos Uploaded',
                    f'{current_user.full_name} uploaded photos for request: "{req.title}"',
                    'info', request_id=req.id)
+        db.session.commit()
         flash('Photos uploaded successfully. Request completed.', 'success')
         return redirect(url_for('dashboard'))
 
@@ -397,10 +428,15 @@ def admin_dashboard():
 def review_request(req_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
 
     req = db.session.get(AccessRequest, req_id)
     if not req:
         abort(404)
+
+    if req.status not in ('pending',):
+        flash('Request is no longer pending.', 'warning')
+        return redirect(url_for('admin_dashboard'))
 
     action = request.form.get('action')
     notes = request.form.get('notes', '').strip()
@@ -409,7 +445,6 @@ def review_request(req_id):
         req.status = 'approved'
         req.reviewed_by = current_user.id
         req.review_notes = notes
-        db.session.commit()
         log_action(current_user.id, 'APPROVE_REQUEST',
                    f'Approved request: {req.title}',
                    request_id=req.id)
@@ -419,13 +454,13 @@ def review_request(req_id):
         notify(req.user_id, 'Request Approved',
                f'Your request "{req.title}" has been approved by {current_user.full_name}.',
                'success', request_id=req.id)
+        db.session.commit()
         flash(f'Request #{req.id} approved.', 'success')
 
     elif action == 'reject':
         req.status = 'rejected'
         req.reviewed_by = current_user.id
         req.review_notes = notes
-        db.session.commit()
         log_action(current_user.id, 'REJECT_REQUEST',
                    f'Rejected request: {req.title}. Reason: {notes}',
                    request_id=req.id)
@@ -435,6 +470,7 @@ def review_request(req_id):
         notify(req.user_id, 'Request Rejected',
                f'Your request "{req.title}" was rejected. Reason: {notes}',
                'danger', request_id=req.id)
+        db.session.commit()
         flash(f'Request #{req.id} rejected.', 'warning')
 
     else:
@@ -448,8 +484,10 @@ def review_request(req_id):
 def admin_users():
     if not current_user.is_admin:
         abort(403)
-    users = User.query.order_by(User.created_at.desc()).all()
-    return render_template('admin_users.html', users=users)
+    page = request.args.get('page', 1, type=int)
+    users_paged = User.query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=50, error_out=False)
+    return render_template('admin_users.html', users=users_paged)
 
 
 @app.route('/admin/user/<int:user_id>/edit', methods=['POST'])
@@ -457,9 +495,14 @@ def admin_users():
 def admin_edit_user(user_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
     user = db.session.get(User, user_id)
     if not user:
         abort(404)
+
+    if user_id == 1 and current_user.id != 1:
+        flash('You cannot edit the superadmin.', 'danger')
+        return redirect(url_for('admin_users'))
 
     username = request.form.get('username', '').strip()
     email = request.form.get('email', '').strip()
@@ -484,11 +527,15 @@ def admin_edit_user(user_id):
     user.email = email
     user.full_name = full_name
     user.is_admin = is_admin
-    if request.form.get('password'):
-        user.set_password(request.form.get('password'))
+    password = request.form.get('password', '')
+    if password:
+        if len(password) < 6:
+            flash('Password must be at least 6 characters.', 'danger')
+            return redirect(url_for('admin_users'))
+        user.set_password(password)
 
-    db.session.commit()
     log_action(current_user.id, 'USER_UPDATED', f'Updated user: {user.username}')
+    db.session.commit()
     flash(f'User {user.username} updated.', 'success')
     return redirect(url_for('admin_users'))
 
@@ -498,6 +545,10 @@ def admin_edit_user(user_id):
 def admin_delete_user(user_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
+    if user_id == 1:
+        flash('You cannot delete the superadmin.', 'danger')
+        return redirect(url_for('admin_users'))
     if user_id == current_user.id:
         flash('You cannot delete your own account.', 'danger')
         return redirect(url_for('admin_users'))
@@ -508,11 +559,11 @@ def admin_delete_user(user_id):
 
     AccessRequest.query.filter_by(reviewed_by=user_id).update(
         {AccessRequest.reviewed_by: None})
+    Notification.query.filter_by(user_id=user_id).delete()
     username = user.username
     db.session.delete(user)
-    db.session.commit()
-
     log_action(current_user.id, 'USER_DELETED', f'Deleted user: {username}')
+    db.session.commit()
     flash(f'User {username} and all their data deleted.', 'success')
     return redirect(url_for('admin_users'))
 
@@ -522,6 +573,7 @@ def admin_delete_user(user_id):
 def admin_delete_request(req_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
     req = db.session.get(AccessRequest, req_id)
     if not req:
         abort(404)
@@ -529,10 +581,11 @@ def admin_delete_request(req_id):
     title = req.title
     ConsoleLog.query.filter_by(request_id=req.id).update(
         {ConsoleLog.request_id: None})
+    Notification.query.filter_by(request_id=req.id).update(
+        {Notification.request_id: None})
     db.session.delete(req)
-    db.session.commit()
-
     log_action(current_user.id, 'REQUEST_DELETED', f'Deleted request: {title}')
+    db.session.commit()
     flash(f'Request #{req_id} deleted.', 'success')
     return redirect(url_for('admin_dashboard'))
 
@@ -542,6 +595,7 @@ def admin_delete_request(req_id):
 def admin_delete_log(log_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
     log = db.session.get(ConsoleLog, log_id)
     if not log:
         abort(404)
@@ -556,10 +610,11 @@ def admin_delete_log(log_id):
 def admin_clear_logs():
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
     count = ConsoleLog.query.count()
     ConsoleLog.query.delete()
-    db.session.commit()
     log_action(current_user.id, 'LOGS_CLEARED', f'Cleared {count} log entries')
+    db.session.commit()
     flash(f'{count} log entries cleared.', 'success')
     return redirect(url_for('console_logs'))
 
@@ -569,6 +624,10 @@ def admin_clear_logs():
 def toggle_user(user_id):
     if not current_user.is_admin:
         abort(403)
+    validate_csrf()
+    if user_id == 1:
+        flash('You cannot deactivate the superadmin.', 'danger')
+        return redirect(url_for('admin_users'))
     if user_id == current_user.id:
         flash('You cannot deactivate yourself.', 'danger')
         return redirect(url_for('admin_users'))
@@ -578,10 +637,10 @@ def toggle_user(user_id):
         abort(404)
 
     user.is_active = not user.is_active
-    db.session.commit()
     status = 'activated' if user.is_active else 'deactivated'
     log_action(current_user.id, f'USER_{status.upper()}',
                f'{status} user: {user.username}')
+    db.session.commit()
     flash(f'User {user.username} {status}.', 'success')
     return redirect(url_for('admin_users'))
 
@@ -644,7 +703,7 @@ def console_logs():
 @app.route('/dashboard/data')
 @login_required
 def dashboard_data():
-    from sqlalchemy import func, extract
+    from sqlalchemy import func
 
     if current_user.is_admin:
         base_reqs = AccessRequest.query
@@ -665,8 +724,15 @@ def dashboard_data():
         y -= 1
     six_months_ago = six_months_ago.replace(year=y, month=m)
 
+    # PostgreSQL-compatible month truncation
+    is_pg = app.config['SQLALCHEMY_DATABASE_URI'].startswith('postgresql')
+    if is_pg:
+        month_col = func.to_char(AccessRequest.created_at, 'YYYY-MM').label('month')
+    else:
+        month_col = func.strftime('%Y-%m', AccessRequest.created_at).label('month')
+
     monthly_query = db.session.query(
-        func.strftime('%Y-%m', AccessRequest.created_at).label('month'),
+        month_col,
         func.count(AccessRequest.id).label('count')
     ).filter(AccessRequest.created_at >= six_months_ago)
     if not current_user.is_admin:
@@ -677,7 +743,10 @@ def dashboard_data():
     months_arr = []
     counts_arr = []
     for i in range(6):
-        d = six_months_ago.replace(month=six_months_ago.month + i if six_months_ago.month + i <= 12 else six_months_ago.month + i - 12)
+        target_month = six_months_ago.month + i
+        y_offset = (target_month - 1) // 12
+        m_final = ((target_month - 1) % 12) + 1
+        d = six_months_ago.replace(year=six_months_ago.year + y_offset, month=m_final)
         label = d.strftime('%Y-%m')
         months_arr.append(label)
         counts_arr.append(months_map.get(label, 0))
@@ -749,6 +818,7 @@ def mark_notification_read(notif_id):
     notif = db.session.get(Notification, notif_id)
     if not notif or notif.user_id != current_user.id:
         abort(404)
+    validate_csrf()
     notif.is_read = True
     db.session.commit()
     return '', 204
@@ -757,6 +827,7 @@ def mark_notification_read(notif_id):
 @app.route('/notifications/read-all', methods=['POST'])
 @login_required
 def mark_all_read():
+    validate_csrf()
     Notification.query.filter_by(
         user_id=current_user.id, is_read=False).update(
         {Notification.is_read: True})
@@ -766,6 +837,7 @@ def mark_all_read():
 
 
 @app.route('/static/uploads/<filename>')
+@login_required
 def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 

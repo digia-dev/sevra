@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Server Error{% endblock %}
+{% block content %}
+<div class="empty-state" style="padding-top:80px">
+    <div class="empty-icon" style="font-size:4rem;color:var(--danger)"><i data-lucide="alert-triangle"></i></div>
+    <h3>500 — Server Error</h3>
+    <p>Something went wrong. This might be a database connection issue.</p>
+    <p style="font-size:0.82rem;color:var(--gray-400);margin-top:4px">Make sure your database is connected in the Vercel dashboard.</p>
+    <a href="{{ url_for('index') }}" class="btn btn-primary"><i data-lucide="home" class="icon-sm"></i> Home</a>
+</div>
+{% endblock %}

@@ -744,6 +744,11 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+@app.errorhandler(500)
+def server_error(e):
+    return render_template('500.html'), 500
+
+
 @app.errorhandler(403)
 def forbidden(e):
     return render_template('403.html'), 403
@@ -757,10 +762,14 @@ def not_found(e):
 @app.before_request
 def create_tables_and_seed():
     if not hasattr(app, '_db_initialized'):
-        with app.app_context():
-            db.create_all()
-            seed_default_users()
-        app._db_initialized = True
+        try:
+            with app.app_context():
+                db.create_all()
+                seed_default_users()
+            app._db_initialized = True
+        except Exception as e:
+            app.logger.error(f'DB init failed: {e}')
+            app._db_initialized = True
 
 
 def seed_default_users():

@@ -754,7 +754,41 @@ def not_found(e):
     return render_template('404.html'), 404
 
 
+@app.before_request
+def create_tables_and_seed():
+    if not hasattr(app, '_db_initialized'):
+        with app.app_context():
+            db.create_all()
+            seed_default_users()
+        app._db_initialized = True
+
+
+def seed_default_users():
+    if User.query.filter_by(username='superadmin').first():
+        return
+    superadmin = User(
+        username='superadmin', email='superadmin@system.local',
+        full_name='Super Administrator', is_admin=True, is_active=True
+    )
+    superadmin.set_password('SuperAdmin123!')
+    db.session.add(superadmin)
+    admin = User(
+        username='admin', email='admin@system.local',
+        full_name='System Administrator', is_admin=True, is_active=True
+    )
+    admin.set_password('Admin123!')
+    db.session.add(admin)
+    user = User(
+        username='user', email='user@system.local',
+        full_name='Regular User', is_admin=False, is_active=True
+    )
+    user.set_password('User123!')
+    db.session.add(user)
+    db.session.commit()
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        seed_default_users()
     app.run(debug=True)

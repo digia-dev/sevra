@@ -1,13 +1,27 @@
-{% extends "base.html" %}
-{% block title %}Server Error{% endblock %}
-{% block content %}
-<div class="empty-state" style="padding-top:80px">
-    <div class="empty-icon" style="font-size:4rem;color:var(--danger)"><i data-lucide="alert-triangle"></i></div>
-    <h3>500 — Server Error</h3>
-    <p>Something went wrong. This might be a database connection issue.</p>
-    <p style="font-size:0.85rem;color:var(--gray-400);max-width:400px;margin:8px auto">
-        Make sure your database is connected in the Vercel dashboard.
-    </p>
-    <a href="{{ url_for('dashboard') }}" class="btn btn-primary"><i data-lucide="refresh-cw" class="icon-sm"></i> Try Again</a>
-</div>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#2563EB">
+    <title>Server Error</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;background:#f8fafc">
+    <div class="empty-state" style="text-align:center">
+        <div style="font-size:4rem;color:var(--danger);margin-bottom:16px">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <h3>500 — Server Error</h3>
+        <p>Something went wrong. This might be a database connection issue.</p>
+        <p style="font-size:0.85rem;color:#64748b;max-width:400px;margin:8px auto">
+            Make sure your database is connected in the Vercel dashboard.
+        </p>
+        <div style="margin-top:16px">
+            <a href="/" class="btn btn-primary">Try Again</a>
+        </div>
+    </div>
+</body>
+</html>

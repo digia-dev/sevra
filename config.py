@@ -7,7 +7,12 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    _uri = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL') or 'sqlite:///app.db'
+    _uri = (
+        os.getenv('POSTGRES_URL') or
+        os.getenv('POSTGRES_URL_NON_POOLING') or
+        os.getenv('DATABASE_URL') or
+        'sqlite:///app.db'
+    )
     if _uri and _uri.startswith('postgres://'):
         _uri = _uri.replace('postgres://', 'postgresql://', 1)
     if _uri and _uri.startswith('postgresql://') and 'sslmode' not in _uri:

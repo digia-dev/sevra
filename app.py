@@ -72,9 +72,12 @@ def notify(user_id, title, message, type='info', request_id=None):
 @app.context_processor
 def inject_now():
     ctx = {'current_year': datetime.now(timezone.utc).year}
-    if current_user.is_authenticated:
-        ctx['unread_count'] = Notification.query.filter_by(
-            user_id=current_user.id, is_read=False).count()
+    if current_user.is_authenticated and getattr(app, '_db_initialized', False):
+        try:
+            ctx['unread_count'] = Notification.query.filter_by(
+                user_id=current_user.id, is_read=False).count()
+        except Exception:
+            ctx['unread_count'] = 0
     return ctx
 
 
@@ -97,6 +100,29 @@ def init_db():
         db.session.add(admin)
         db.session.commit()
         print('Admin user created (admin / admin123)')
+
+
+@app.before_request
+def init_db_once():
+    if not getattr(app, '_db_initialized', False) and not request.path.startswith('/static/'):
+        with app.app_context():
+            db.create_all()
+            seed_default_users()
+        app._db_initialized = True
+
+
+def seed_default_users():
+    if User.query.filter_by(username='superadmin').first():
+        return
+    for u in [
+        ('superadmin', 'superadmin@system.local', 'Super Administrator', True, 'SuperAdmin123!'),
+        ('admin', 'admin@system.local', 'System Administrator', True, 'Admin123!'),
+        ('user', 'user@system.local', 'Regular User', False, 'User123!'),
+    ]:
+        user = User(username=u[0], email=u[1], full_name=u[2], is_admin=u[3])
+        user.set_password(u[4])
+        db.session.add(user)
+    db.session.commit()
 
 
 @app.route('/')
@@ -757,11 +783,6 @@ def forbidden(e):
 @app.errorhandler(404)
 def not_found(e):
     return render_template('404.html'), 404
-
-
-@app.errorhandler(500)
-def server_error(e):
-    return render_template('500.html'), 500
 
 
 if __name__ == '__main__':

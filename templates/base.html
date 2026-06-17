@@ -17,7 +17,7 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 </head>
-<body>
+<body{% if current_user.is_authenticated %} data-role="{% if current_user.is_superadmin %}superadmin{% elif current_user.is_admin %}admin{% else %}user{% endif %}"{% endif %}>
     <nav class="navbar" id="topNav">
         <div class="nav-container">
             <a href="{{ url_for('index') }}" class="nav-brand">

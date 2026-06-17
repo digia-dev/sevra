@@ -13,6 +13,90 @@
     --warning-light: #FEF3C7;
     --white: #FFFFFF;
     --gray-50: #F8FAFC;
+    --nav-bg: var(--white);
+    --nav-text: var(--text);
+    --nav-border: var(--gray-200);
+    --brand-text: var(--text);
+}
+
+[data-role="superadmin"] {
+    --primary: #3B82F6;
+    --primary-dark: #2563EB;
+    --nav-bg: #1E293B;
+    --nav-text: #F1F5F9;
+    --nav-border: #334155;
+    --brand-text: #F8FAFC;
+}
+
+[data-role="superadmin"] .navbar,
+[data-role="superadmin"] .bottom-bar {
+    background: #1E293B !important;
+    border-bottom-color: #334155 !important;
+    border-top-color: #334155 !important;
+}
+
+[data-role="superadmin"] .user-name,
+[data-role="superadmin"] .nav-link,
+[data-role="superadmin"] .nav-brand .brand-text,
+[data-role="superadmin"] .bottom-item:not(.bottom-fab):not(.bottom-logout),
+[data-role="superadmin"] .mobile-action-btn,
+[data-role="superadmin"] .mobile-notif-trigger,
+[data-role="superadmin"] .footer p {
+    color: var(--nav-text) !important;
+}
+
+[data-role="superadmin"] .logo-img {
+    filter: brightness(0) invert(1);
+}
+
+[data-role="superadmin"] .bottom-item.active { color: var(--primary) !important; }
+[data-role="superadmin"] .bottom-fab { background: var(--primary) !important; color: #fff !important; }
+[data-role="superadmin"] .bottom-logout { color: #F87171 !important; }
+
+[data-role="admin"] {
+    --nav-bg: #1E3A5F;
+    --nav-text: #E2E8F0;
+    --nav-border: #2D4A6F;
+    --brand-text: #F1F5F9;
+}
+
+[data-role="admin"] .navbar,
+[data-role="admin"] .bottom-bar {
+    background: #1E3A5F !important;
+    border-bottom-color: #2D4A6F !important;
+    border-top-color: #2D4A6F !important;
+}
+
+[data-role="admin"] .user-name,
+[data-role="admin"] .nav-link,
+[data-role="admin"] .nav-brand .brand-text,
+[data-role="admin"] .bottom-item:not(.bottom-fab):not(.bottom-logout),
+[data-role="admin"] .mobile-action-btn,
+[data-role="admin"] .mobile-notif-trigger,
+[data-role="admin"] .footer p {
+    color: var(--nav-text) !important;
+}
+
+[data-role="admin"] .logo-img {
+    filter: brightness(0) invert(1);
+}
+
+[data-role="admin"] .bottom-item.active { color: #60A5FA !important; }
+[data-role="admin"] .bottom-fab { background: #60A5FA !important; color: #fff !important; }
+[data-role="admin"] .bottom-logout { color: #F87171 !important; }
+
+.navbar {
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--nav-border);
+}
+
+.nav-link {
+    color: var(--nav-text);
+}
+
+.nav-brand .brand-text {
+    color: var(--brand-text);
+}
     --gray-100: #F1F5F9;
     --gray-200: #E2E8F0;
     --gray-300: #CBD5E1;

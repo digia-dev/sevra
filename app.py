@@ -768,7 +768,7 @@ def seed_default_users():
         return
     superadmin = User(
         username='superadmin', email='superadmin@system.local',
-        full_name='Super Administrator', is_admin=True, is_active=True
+        full_name='Super Administrator', is_admin=True, is_superadmin=True, is_active=True
     )
     superadmin.set_password('SuperAdmin123!')
     db.session.add(superadmin)

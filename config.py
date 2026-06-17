@@ -10,12 +10,15 @@ class Config:
     _uri = os.getenv('POSTGRES_URL') or os.getenv('DATABASE_URL') or 'sqlite:///app.db'
     if _uri and _uri.startswith('postgres://'):
         _uri = _uri.replace('postgres://', 'postgresql://', 1)
+    if _uri and _uri.startswith('postgresql://') and 'sslmode' not in _uri:
+        sep = '&' if '?' in _uri else '?'
+        _uri = f'{_uri}{sep}sslmode=require'
     SQLALCHEMY_DATABASE_URI = _uri
 
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
-        'pool_recycle': 300,
-        'pool_size': 5,
+        'pool_recycle': 60,
+        'pool_size': 2,
         'max_overflow': 0,
     }
 

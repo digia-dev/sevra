@@ -21,6 +21,8 @@ from models import db, User, AccessRequest, Photo, ConsoleLog, Notification
 
 app = Flask(__name__)
 app.config.from_object(Config)
+if os.environ.get('VERCEL'):
+    app.instance_path = '/tmp/instance'
 
 db.init_app(app)
 login_manager = LoginManager(app)

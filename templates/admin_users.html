@@ -6,6 +6,18 @@
     <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline"><i data-lucide="arrow-left" class="icon-sm"></i> Back to Admin</a>
 </div>
 
+<div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem">
+    <form method="GET" action="{{ url_for('admin_users') }}" class="search-bar" style="flex:1;min-width:200px">
+        <input type="text" name="search" placeholder="Search users..." value="{{ search or '' }}">
+        <button type="submit" class="btn btn-primary" style="padding:0.5rem 1rem"><i data-lucide="search" class="icon-sm"></i></button>
+        {% if search %}
+        <a href="{{ url_for('admin_users') }}" class="btn btn-outline" style="padding:0.5rem 1rem">Clear</a>
+        {% endif %}
+    </form>
+    <button class="btn btn-success" onclick="openCreate()"><i data-lucide="user-plus" class="icon-sm"></i> Create User</button>
+</div>
+
+{% if users.items %}
 <div class="table-container">
     <table class="styled-table">
         <thead>
@@ -28,7 +40,9 @@
                 <td>{{ user.full_name }}</td>
                 <td>{{ user.email }}</td>
                 <td>
-                    {% if user.is_admin %}
+                    {% if user.is_superadmin %}
+                    <span class="badge badge-danger">Superadmin</span>
+                    {% elif user.is_admin %}
                     <span class="badge badge-primary">Admin</span>
                     {% else %}
                     <span class="badge badge-secondary">User</span>
@@ -43,7 +57,7 @@
                 </td>
                 <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
                 <td class="actions-cell">
-                    {% if user.id != current_user.id %}
+                    {% if not user.is_superadmin %}
                     <button class="btn btn-sm btn-outline" onclick="editUser({{ user.id }}, '{{ user.username }}', '{{ user.email }}', '{{ user.full_name }}', {{ 'true' if user.is_admin else 'false' }})"><i data-lucide="edit-3" class="icon-sm"></i></button>
                     <form method="POST" action="{{ url_for('toggle_user', user_id=user.id) }}" class="inline-form">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
@@ -55,6 +69,8 @@
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="icon-sm"></i></button>
                     </form>
+                    {% else %}
+                    <span class="text-muted">Protected</span>
                     {% endif %}
                 </td>
             </tr>
@@ -63,24 +79,63 @@
     </table>
 </div>
 
+{% if users.pages > 1 %}
+<div class="pagination">
+    {% if users.has_prev %}
+    <a href="{{ url_for('admin_users', page=users.prev_num, search=search) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ users.page }} of {{ users.pages }}</span>
+    {% if users.has_next %}
+    <a href="{{ url_for('admin_users', page=users.next_num, search=search) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
+    {% endif %}
+</div>
+{% endif %}
+
 {% else %}
 <div class="empty-state">
     <div class="empty-icon"><i data-lucide="users"></i></div>
     <h3>No Users Found</h3>
+    {% if search %}<p>No results for "{{ search }}"</p>{% endif %}
 </div>
 {% endif %}
 
-{% if users.pages > 1 %}
-<div class="pagination">
-    {% if users.has_prev %}
-    <a href="{{ url_for('admin_users', page=users.prev_num) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
-    {% endif %}
-    <span class="page-info">Page {{ users.page }} of {{ users.pages }}</span>
-    {% if users.has_next %}
-    <a href="{{ url_for('admin_users', page=users.next_num) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
-    {% endif %}
+<div id="createModal" class="modal" style="display:none">
+    <div class="modal-overlay" onclick="closeCreate()"></div>
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Create User</h3>
+            <button class="modal-close" onclick="closeCreate()"><i data-lucide="x"></i></button>
+        </div>
+        <form method="POST" action="{{ url_for('admin_create_user') }}" class="styled-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group">
+                <label for="create_username">Username</label>
+                <input type="text" id="create_username" name="username" required>
+            </div>
+            <div class="form-group">
+                <label for="create_email">Email</label>
+                <input type="email" id="create_email" name="email" required>
+            </div>
+            <div class="form-group">
+                <label for="create_full_name">Full Name</label>
+                <input type="text" id="create_full_name" name="full_name" required>
+            </div>
+            <div class="form-group">
+                <label for="create_password">Password</label>
+                <input type="password" id="create_password" name="password" required minlength="6" placeholder="Min 6 characters">
+            </div>
+            <div class="form-group checkbox-group">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="create_is_admin" name="is_admin"> Admin role
+                </label>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-outline" onclick="closeCreate()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create User</button>
+            </div>
+        </form>
+    </div>
 </div>
-{% endif %}
 
 <div id="editModal" class="modal" style="display:none">
     <div class="modal-overlay" onclick="closeEdit()"></div>
@@ -121,6 +176,13 @@
 </div>
 
 <script>
+function openCreate() {
+    document.getElementById('createModal').style.display = 'flex';
+    lucide.createIcons();
+}
+function closeCreate() {
+    document.getElementById('createModal').style.display = 'none';
+}
 function editUser(id, username, email, fullName, isAdmin) {
     document.getElementById('editForm').action = '/admin/user/' + id + '/edit';
     document.getElementById('edit_username').value = username;

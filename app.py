@@ -146,13 +146,13 @@ def init_db_once():
 def seed_default_users():
     existing = {u.username for u in User.query.all()}
     for u in [
-        ('superadmin', 'superadmin@system.local', 'Super Administrator', True, 'SuperAdmin123!'),
-        ('admin', 'admin@system.local', 'System Administrator', True, 'Admin123!'),
-        ('user', 'user@system.local', 'Regular User', False, 'User123!'),
+        ('superadmin', 'superadmin@system.local', 'Super Administrator', True, True, 'SuperAdmin123!'),
+        ('admin', 'admin@system.local', 'System Administrator', True, False, 'Admin123!'),
+        ('user', 'user@system.local', 'Regular User', False, False, 'User123!'),
     ]:
         if u[0] not in existing:
-            user = User(username=u[0], email=u[1], full_name=u[2], is_admin=u[3])
-            user.set_password(u[4])
+            user = User(username=u[0], email=u[1], full_name=u[2], is_admin=u[3], is_superadmin=u[4])
+            user.set_password(u[5])
             db.session.add(user)
     db.session.commit()
 
@@ -162,48 +162,41 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('dashboard'))
+@app.route('/admin/user/create', methods=['POST'])
+@login_required
+def admin_create_user():
+    if not current_user.is_superadmin:
+        abort(403)
+    validate_csrf()
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    full_name = request.form.get('full_name', '').strip()
+    password = request.form.get('password', '')
+    is_admin = request.form.get('is_admin') == 'on'
 
-    if request.method == 'POST':
-        validate_csrf()
-        username = request.form.get('username', '').strip()
-        email = request.form.get('email', '').strip()
-        full_name = request.form.get('full_name', '').strip()
-        password = request.form.get('password', '')
-        confirm = request.form.get('confirm_password', '')
+    if not all([username, email, full_name, password]):
+        flash('All fields are required.', 'danger')
+        return redirect(url_for('admin_users'))
 
-        if not all([username, email, full_name, password]):
-            flash('All fields are required.', 'danger')
-            return render_template('register.html')
+    if len(password) < 6:
+        flash('Password must be at least 6 characters.', 'danger')
+        return redirect(url_for('admin_users'))
 
-        if password != confirm:
-            flash('Passwords do not match.', 'danger')
-            return render_template('register.html')
+    if User.query.filter_by(username=username).first():
+        flash('Username already taken.', 'danger')
+        return redirect(url_for('admin_users'))
 
-        if len(password) < 6:
-            flash('Password must be at least 6 characters.', 'danger')
-            return render_template('register.html')
+    if User.query.filter_by(email=email).first():
+        flash('Email already registered.', 'danger')
+        return redirect(url_for('admin_users'))
 
-        if User.query.filter_by(username=username).first():
-            flash('Username already taken.', 'danger')
-            return render_template('register.html')
-
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered.', 'danger')
-            return render_template('register.html')
-
-        user = User(username=username, email=email, full_name=full_name)
-        user.set_password(password)
-        db.session.add(user)
-        log_action(user.id, 'REGISTER', 'User registered successfully')
-        db.session.commit()
-        flash('Registration successful. Please log in.', 'success')
-        return redirect(url_for('login'))
-
-    return render_template('register.html')
+    user = User(username=username, email=email, full_name=full_name, is_admin=is_admin)
+    user.set_password(password)
+    db.session.add(user)
+    log_action(current_user.id, 'USER_CREATED', f'Created user: {username} (admin={is_admin})')
+    db.session.commit()
+    flash(f'User {username} created.', 'success')
+    return redirect(url_for('admin_users'))
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -492,26 +485,36 @@ def review_request(req_id):
 @app.route('/admin/users')
 @login_required
 def admin_users():
-    if not current_user.is_admin:
+    if not current_user.is_superadmin:
         abort(403)
     page = request.args.get('page', 1, type=int)
-    users_paged = User.query.order_by(User.created_at.desc()).paginate(
+    search = request.args.get('search', '').strip()
+    q = User.query
+    if search:
+        q = q.filter(
+            db.or_(
+                User.username.ilike(f'%{search}%'),
+                User.full_name.ilike(f'%{search}%'),
+                User.email.ilike(f'%{search}%'),
+            )
+        )
+    users_paged = q.order_by(User.created_at.desc()).paginate(
         page=page, per_page=50, error_out=False)
-    return render_template('admin_users.html', users=users_paged)
+    return render_template('admin_users.html', users=users_paged, search=search)
 
 
 @app.route('/admin/user/<int:user_id>/edit', methods=['POST'])
 @login_required
 def admin_edit_user(user_id):
-    if not current_user.is_admin:
+    if not current_user.is_superadmin:
         abort(403)
     validate_csrf()
     user = db.session.get(User, user_id)
     if not user:
         abort(404)
 
-    if user_id == 1 and current_user.id != 1:
-        flash('You cannot edit the superadmin.', 'danger')
+    if user.is_superadmin and current_user.id != user_id:
+        flash('You cannot edit another superadmin.', 'danger')
         return redirect(url_for('admin_users'))
 
     username = request.form.get('username', '').strip()
@@ -553,19 +556,18 @@ def admin_edit_user(user_id):
 @app.route('/admin/user/<int:user_id>/delete', methods=['POST'])
 @login_required
 def admin_delete_user(user_id):
-    if not current_user.is_admin:
+    if not current_user.is_superadmin:
         abort(403)
     validate_csrf()
-    if user_id == 1:
-        flash('You cannot delete the superadmin.', 'danger')
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+    if user.is_superadmin:
+        flash('You cannot delete a superadmin.', 'danger')
         return redirect(url_for('admin_users'))
     if user_id == current_user.id:
         flash('You cannot delete your own account.', 'danger')
         return redirect(url_for('admin_users'))
-
-    user = db.session.get(User, user_id)
-    if not user:
-        abort(404)
 
     AccessRequest.query.filter_by(reviewed_by=user_id).update(
         {AccessRequest.reviewed_by: None})
@@ -632,19 +634,18 @@ def admin_clear_logs():
 @app.route('/admin/user/<int:user_id>/toggle', methods=['POST'])
 @login_required
 def toggle_user(user_id):
-    if not current_user.is_admin:
+    if not current_user.is_superadmin:
         abort(403)
     validate_csrf()
-    if user_id == 1:
-        flash('You cannot deactivate the superadmin.', 'danger')
+    user = db.session.get(User, user_id)
+    if not user:
+        abort(404)
+    if user.is_superadmin:
+        flash('You cannot deactivate a superadmin.', 'danger')
         return redirect(url_for('admin_users'))
     if user_id == current_user.id:
         flash('You cannot deactivate yourself.', 'danger')
         return redirect(url_for('admin_users'))
-
-    user = db.session.get(User, user_id)
-    if not user:
-        abort(404)
 
     user.is_active = not user.is_active
     status = 'activated' if user.is_active else 'deactivated'

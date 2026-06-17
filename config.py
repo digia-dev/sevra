@@ -10,12 +10,15 @@ class Config:
     _uri = (
         os.getenv('POSTGRES_URL') or
         os.getenv('POSTGRES_URL_NON_POOLING') or
-        os.getenv('DATABASE_URL') or
-        'sqlite:///app.db'
+        os.getenv('DATABASE_URL')
     )
-    if _uri and _uri.startswith('postgres://'):
+    if not _uri:
+        raise RuntimeError(
+            'Database URL not set. Set POSTGRES_URL or DATABASE_URL env var.'
+        )
+    if _uri.startswith('postgres://'):
         _uri = _uri.replace('postgres://', 'postgresql://', 1)
-    if _uri and _uri.startswith('postgresql://') and 'sslmode' not in _uri:
+    if _uri.startswith('postgresql://') and 'sslmode' not in _uri:
         sep = '&' if '?' in _uri else '?'
         _uri = f'{_uri}{sep}sslmode=require'
     SQLALCHEMY_DATABASE_URI = _uri

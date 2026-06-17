@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h2>Notifications</h2>
+    {% if notifs.items %}
+    <form method="POST" action="{{ url_for('mark_all_read') }}" class="inline-form">
+        <button type="submit" class="btn btn-sm btn-outline"><i data-lucide="check-check" class="icon-sm"></i> Mark All Read</button>
+    </form>
+    {% endif %}
+</div>
+
+{% if notifs.items %}
+<div class="notif-list">
+    {% for n in notifs.items %}
+    <div class="notif-item {% if not n.is_read %}notif-unread{% endif %}" data-id="{{ n.id }}">
+        <div class="notif-icon notif-{{ n.type }}">
+            <i data-lucide="{% if n.type == 'success' %}check-circle{% elif n.type == 'danger' %}x-circle{% else %}info{% endif %}"></i>
+        </div>
+        <div class="notif-body">
+            <div class="notif-title">{{ n.title }}</div>
+            <div class="notif-message">{{ n.message }}</div>
+            <div class="notif-time">{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+        </div>
+        <div class="notif-actions">
+            {% if not n.is_read %}
+            <form method="POST" action="{{ url_for('mark_notification_read', notif_id=n.id) }}" class="inline-form mark-read-form">
+                <button type="submit" class="btn btn-sm btn-outline"><i data-lucide="check" class="icon-sm"></i></button>
+            </form>
+            {% endif %}
+            {% if n.request_id %}
+            <a href="{{ url_for('view_request', req_id=n.request_id) }}" class="btn btn-sm btn-outline"><i data-lucide="external-link" class="icon-sm"></i></a>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="pagination">
+    {% if notifs.has_prev %}
+    <a href="{{ url_for('notifications_page', page=notifs.prev_num) }}" class="btn btn-sm btn-outline"><i data-lucide="chevron-left" class="icon-sm"></i> Previous</a>
+    {% endif %}
+    <span class="page-info">Page {{ notifs.page }} of {{ notifs.pages }}</span>
+    {% if notifs.has_next %}
+    <a href="{{ url_for('notifications_page', page=notifs.next_num) }}" class="btn btn-sm btn-outline">Next <i data-lucide="chevron-right" class="icon-sm"></i></a>
+    {% endif %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon"><i data-lucide="bell-off"></i></div>
+    <h3>No Notifications</h3>
+    <p>You're all caught up!</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.mark-read-form').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var btn = this.querySelector('button');
+        var item = this.closest('.notif-item');
+        fetch(this.action, { method: 'POST' });
+        item.classList.remove('notif-unread');
+        btn.innerHTML = '<i data-lucide="check" class="icon-sm"></i>';
+        btn.disabled = true;
+        lucide.createIcons();
+    });
+});
+</script>
+{% endblock %}

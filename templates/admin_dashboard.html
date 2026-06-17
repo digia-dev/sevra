@@ -196,13 +196,27 @@ function renderPendingList(data) {
     }
     container.innerHTML = '<div class="activity-list">' +
         pendingReqs.map(r => `
-            <a href="/request/${r.id}" class="activity-item">
-                <span class="activity-badge badge badge-warning">pending</span>
-                <span class="activity-text">${r.title}</span>
-                <span class="activity-server">${r.user}</span>
-                <span class="activity-time">${r.created}</span>
-            </a>
+            <div class="activity-item" style="flex-wrap:wrap">
+                <a href="/request/${r.id}" style="display:flex;gap:10px;align-items:center;flex:1;text-decoration:none;color:inherit">
+                    <span class="activity-badge badge badge-warning">pending</span>
+                    <span class="activity-text">${r.title}</span>
+                    <span class="activity-server">${r.user}</span>
+                    <span class="activity-time">${r.created}</span>
+                </a>
+                <div style="display:flex;gap:4px;padding:4px 0 0 90px;width:100%">
+                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" class="btn btn-sm btn-success"><i data-lucide="check" class="icon-sm"></i> Approve</button>
+                    </form>
+                    <form method="POST" action="/admin/request/${r.id}/review" class="inline-form">
+                        <input type="hidden" name="action" value="reject">
+                        <textarea name="notes" placeholder="Reason..." rows="1" class="inline-notes" style="width:80px" required></textarea>
+                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="x" class="icon-sm"></i> Reject</button>
+                    </form>
+                </div>
+            </div>
         `).join('') + '</div>';
+    lucide.createIcons();
 }
 
 function renderRecentList(data) {

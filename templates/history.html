@@ -34,8 +34,19 @@
                 <td><span class="badge badge-{{ req.status_badge }}">{{ req.status }}</span></td>
                 <td>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                 <td>{{ req.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>
+                <td class="actions-cell">
                     <a href="{{ url_for('view_request', req_id=req.id) }}" class="btn btn-sm btn-outline">View</a>
+                    {% if current_user.is_admin and req.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
+                        <input type="hidden" name="action" value="approve">
+                        <button type="submit" class="btn btn-sm btn-success"><i data-lucide="check" class="icon-sm"></i></button>
+                    </form>
+                    <form method="POST" action="{{ url_for('review_request', req_id=req.id) }}" class="inline-form">
+                        <input type="hidden" name="action" value="reject">
+                        <textarea name="notes" placeholder="Reason..." rows="1" class="inline-notes" style="width:80px" required></textarea>
+                        <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="x" class="icon-sm"></i></button>
+                    </form>
+                    {% endif %}
                     {% if current_user.is_admin %}
                     <form method="POST" action="{{ url_for('admin_delete_request', req_id=req.id) }}" class="inline-form" onsubmit="return confirm('Delete request #{{ req.id }}?')">
                         <button type="submit" class="btn btn-sm btn-danger"><i data-lucide="trash-2" class="icon-sm"></i></button>

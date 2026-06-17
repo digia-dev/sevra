@@ -15,7 +15,7 @@ except ImportError:
     HAS_PIL = False
 
 from config import Config
-from models import db, User, AccessRequest, Photo, ConsoleLog
+from models import db, User, AccessRequest, Photo, ConsoleLog, Notification
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -60,9 +60,22 @@ def log_action(user_id, action, details=None, request_id=None, ip=None):
     db.session.commit()
 
 
+def notify(user_id, title, message, type='info', request_id=None):
+    notif = Notification(
+        user_id=user_id, title=title, message=message,
+        type=type, request_id=request_id
+    )
+    db.session.add(notif)
+    db.session.commit()
+
+
 @app.context_processor
 def inject_now():
-    return {'current_year': datetime.now(timezone.utc).year}
+    ctx = {'current_year': datetime.now(timezone.utc).year}
+    if current_user.is_authenticated:
+        ctx['unread_count'] = Notification.query.filter_by(
+            user_id=current_user.id, is_read=False).count()
+    return ctx
 
 
 @login_manager.user_loader
@@ -209,6 +222,10 @@ def new_request():
         log_action(current_user.id, 'SUBMIT_REQUEST',
                    f'Submitted request: {title}',
                    request_id=req.id)
+        for admin in User.query.filter_by(is_admin=True).all():
+            notify(admin.id, 'New Access Request',
+                   f'{current_user.full_name} submitted a new request: "{title}"',
+                   'info', request_id=req.id)
         flash('Access request submitted successfully.', 'success')
         return redirect(url_for('dashboard'))
 
@@ -271,6 +288,10 @@ def upload_photos(req_id):
         log_action(current_user.id, 'UPLOAD_PHOTOS',
                    f'Uploaded photos for request: {req.title}',
                    request_id=req.id)
+        for admin in User.query.filter_by(is_admin=True).all():
+            notify(admin.id, 'Photos Uploaded',
+                   f'{current_user.full_name} uploaded photos for request: "{req.title}"',
+                   'info', request_id=req.id)
         flash('Photos uploaded successfully. Request completed.', 'success')
         return redirect(url_for('dashboard'))
 
@@ -321,6 +342,9 @@ def review_request(req_id):
         log_action(req.user_id, 'REQUEST_APPROVED',
                    f'Your request has been approved: {req.title}',
                    request_id=req.id)
+        notify(req.user_id, 'Request Approved',
+               f'Your request "{req.title}" has been approved by {current_user.full_name}.',
+               'success', request_id=req.id)
         flash(f'Request #{req.id} approved.', 'success')
 
     elif action == 'reject':
@@ -334,6 +358,9 @@ def review_request(req_id):
         log_action(req.user_id, 'REQUEST_REJECTED',
                    f'Your request has been rejected: {req.title}. Reason: {notes}',
                    request_id=req.id)
+        notify(req.user_id, 'Request Rejected',
+               f'Your request "{req.title}" was rejected. Reason: {notes}',
+               'danger', request_id=req.id)
         flash(f'Request #{req.id} rejected.', 'warning')
 
     else:
@@ -587,6 +614,37 @@ def dashboard_data():
         'servers': {'labels': server_labels, 'counts': server_counts},
         'recent': recent_data
     }
+
+
+@app.route('/notifications')
+@login_required
+def notifications_page():
+    page = request.args.get('page', 1, type=int)
+    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(
+        Notification.created_at.desc()).paginate(page=page, per_page=20, error_out=False)
+    return render_template('notifications.html', notifs=notifs)
+
+
+@app.route('/notifications/read/<int:notif_id>', methods=['POST'])
+@login_required
+def mark_notification_read(notif_id):
+    notif = db.session.get(Notification, notif_id)
+    if not notif or notif.user_id != current_user.id:
+        abort(404)
+    notif.is_read = True
+    db.session.commit()
+    return '', 204
+
+
+@app.route('/notifications/read-all', methods=['POST'])
+@login_required
+def mark_all_read():
+    Notification.query.filter_by(
+        user_id=current_user.id, is_read=False).update(
+        {Notification.is_read: True})
+    db.session.commit()
+    flash('All notifications marked as read.', 'success')
+    return redirect(request.referrer or url_for('notifications_page'))
 
 
 @app.route('/static/uploads/<filename>')
